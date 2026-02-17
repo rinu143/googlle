@@ -10,8 +10,29 @@ import { sendWelcomeEmail } from "./services/mailer.js";
 dotenv.config();
 
 const app = express();
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
+
+const requiredEnv = [
+  "RAZORPAY_KEY_ID",
+  "RAZORPAY_KEY_SECRET",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_CLIENT_EMAIL",
+  "FIREBASE_PRIVATE_KEY",
+  "GMAIL_USER",
+  "GMAIL_PASS",
+];
+
+requiredEnv.forEach((key) => {
+  if (!process.env[key]) {
+    console.error(`Missing ENV: ${key}`);
+  }
+});
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -33,7 +54,7 @@ function generateSlug(email) {
 }
 
 // ---------- CREATE ORDER ----------
-app.post("/create-order", async (req, res) => {
+app.post("/create-order", async (req, res, next) => {
   try {
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
       return res.status(500).json({
@@ -69,14 +90,14 @@ app.post("/create-order", async (req, res) => {
       amount: order.amount,
       currency: order.currency,
     });
-  } catch (e) {
-    console.error("create-order error:", e);
-    res.status(500).json({ error: e.message, message: e.message });
+  } catch (error) {
+    console.error("CREATE ORDER ERROR:", error);
+    next(error);
   }
 });
 
 // ---------- VERIFY PAYMENT & CREATE USER ----------
-app.post("/verify-payment", async (req, res) => {
+app.post("/verify-payment", async (req, res, next) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, email, phone } = req.body;
 
@@ -141,17 +162,19 @@ app.post("/verify-payment", async (req, res) => {
       uid: userRecord.uid,
     });
 
-    await sendWelcomeEmail(email, password, slug);
+    await sendWelcomeEmail(email, password, slug).catch((e) => {
+      console.error("MAIL ERROR:", e);
+    });
 
     res.json({ success: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message, message: e.message });
+  } catch (error) {
+    console.error("VERIFY PAYMENT ERROR:", error);
+    next(error);
   }
 });
 
 // ---------- ADMIN CREATE USER ----------
-app.post("/admin-create-user", async (req, res) => {
+app.post("/admin-create-user", async (req, res, next) => {
   try {
     const { email, phone } = req.body;
 
@@ -178,12 +201,24 @@ app.post("/admin-create-user", async (req, res) => {
       uid: userRecord.uid,
     });
 
-    await sendWelcomeEmail(email, password, slug);
+    await sendWelcomeEmail(email, password, slug).catch((e) => {
+      console.error("MAIL ERROR:", e);
+    });
 
     res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (error) {
+    console.error("ADMIN CREATE USER ERROR:", error);
+    next(error);
   }
+});
+
+app.use((err, req, res, next) => {
+  console.error("GLOBAL ERROR:", err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+  });
 });
 
 app.listen(3000, () => console.log("Server running on port 3000"));
