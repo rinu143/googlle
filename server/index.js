@@ -1,27 +1,17 @@
-const express = require("express");
-const Razorpay = require("razorpay");
-const crypto = require("crypto");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const admin = require("firebase-admin");
-const fs = require("fs");
-const sendWelcomeEmail = require("./services/mailer.js");
+import express from "express";
+import Razorpay from "razorpay";
+import crypto from "crypto";
+import cors from "cors";
+import dotenv from "dotenv";
+import { FieldValue } from "firebase-admin/firestore";
+import { db, auth } from "./firebaseAdmin.js";
+import sendWelcomeEmail from "./services/mailer.js";
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cors({ origin: true }));
-
-// Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert(
-    JSON.parse(fs.readFileSync("./firebaseAdmin.json")),
-  ),
-});
-
-const db = admin.firestore();
-const auth = admin.auth();
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -39,9 +29,7 @@ function generatePassword(email, phone) {
 }
 
 function generateSlug(email) {
-  return (
-    email.slice(0, 3).toLowerCase()
-  );
+  return email.slice(0, 3).toLowerCase();
 }
 
 // ---------- CREATE ORDER ----------
@@ -90,21 +78,9 @@ app.post("/create-order", async (req, res) => {
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      email,
-      phone,
-    } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, email, phone } = req.body;
 
-    if (
-      !razorpay_order_id ||
-      !razorpay_payment_id ||
-      !razorpay_signature ||
-      !email ||
-      !phone
-    ) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !email || !phone) {
       return res.status(400).json({
         error: "Missing required fields",
         message: "Missing required fields",
@@ -132,10 +108,7 @@ app.post("/verify-payment", async (req, res) => {
       });
 
     // prevent duplicates
-    const existing = await db
-      .collection("users")
-      .where("email", "==", email)
-      .get();
+    const existing = await db.collection("users").where("email", "==", email).get();
 
     if (!existing.empty)
       return res.status(409).json({
@@ -147,9 +120,9 @@ app.post("/verify-payment", async (req, res) => {
     const slug = generateSlug(email);
 
     // create auth user
-    const userRecord = await admin.auth().createUser({
-      email: email,
-      password: password,
+    const userRecord = await auth.createUser({
+      email,
+      password,
       phoneNumber: "+91" + phone,
       emailVerified: true,
       disabled: false,
@@ -161,7 +134,7 @@ app.post("/verify-payment", async (req, res) => {
       phone,
       slug,
       role: "performer",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     await db.collection("slugs").doc(slug).set({
@@ -185,9 +158,9 @@ app.post("/admin-create-user", async (req, res) => {
     const password = generatePassword(email, phone);
     const slug = generateSlug(email);
 
-    const userRecord = await admin.auth().createUser({
-      email: email,
-      password: password,
+    const userRecord = await auth.createUser({
+      email,
+      password,
       phoneNumber: "+91" + phone,
       emailVerified: true,
       disabled: false,
@@ -198,7 +171,7 @@ app.post("/admin-create-user", async (req, res) => {
       phone,
       slug,
       role: "performer",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
 
     await db.collection("slugs").doc(slug).set({
