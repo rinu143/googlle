@@ -5,7 +5,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { FieldValue } from "firebase-admin/firestore";
 import { db, auth } from "./firebaseAdmin.js";
-import sendWelcomeEmail from "./services/mailer.js";
+import { sendWelcomeEmail } from "./services/mailer.js";
 
 dotenv.config();
 
