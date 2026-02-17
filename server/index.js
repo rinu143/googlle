@@ -24,8 +24,7 @@ const requiredEnv = [
   "FIREBASE_PROJECT_ID",
   "FIREBASE_CLIENT_EMAIL",
   "FIREBASE_PRIVATE_KEY",
-  "GMAIL_USER",
-  "GMAIL_PASS",
+  "RESEND_API_KEY",
 ];
 
 requiredEnv.forEach((key) => {
