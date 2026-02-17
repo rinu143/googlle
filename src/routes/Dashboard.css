@@ -1,0 +1,419 @@
+/* Dashboard.css - Monochrome Theme */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+  --primary: #ffffff; /* White */
+  --primary-hover: #e5e5e5; /* Neutral 200 */
+  --bg-body: #000000; /* Pure Black */
+  --bg-card: #0a0a0a; /* Neutral 950 */
+  --text-main: #a3a3a3; /* Off-white / Neutral 400 for general text */
+  --text-highlight: #ffffff; /* Pure White for Latest/Important */
+  --text-muted: #525252; /* Neutral 600 */
+  --border-color: #262626; /* Neutral 800 */
+  --danger: #ef4444;
+  --success: #10b981;
+  --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+  --shadow-md:
+    0 4px 6px -1px rgb(255 255 255 / 0.1), 0 2px 4px -2px rgb(255 255 255 / 0.1);
+  --shadow-lg:
+    0 10px 15px -3px rgb(255 255 255 / 0.1),
+    0 4px 6px -4px rgb(255 255 255 / 0.1);
+}
+
+.dashboard-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  min-height: 100vh;
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  background-image: radial-gradient(#262626 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Changed back to center for better balance */
+  margin-bottom: 3.5rem;
+}
+
+.dashboard-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin: 0;
+  letter-spacing: -0.03em;
+  background: none;
+  -webkit-text-fill-color: var(--text-muted);
+}
+
+.dashboard-email {
+  margin: 0.25rem 0 0.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.header-link-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: #111; /* Darker input-like background */
+  padding: 0.5rem 1rem;
+  border-radius: 8px; /* Slightly tighter radius */
+  border: 1px solid #333;
+  width: fit-content;
+  box-shadow: none; /* Flat look */
+  margin-top: 0.5rem;
+}
+
+.header-link-url {
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 0.9rem;
+  color: #d4d4d4;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.copy-btn-small {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.copy-btn-small:hover {
+  background-color: var(--bg-body);
+  color: var(--primary);
+}
+
+.copy-btn-small.copied {
+  color: var(
+    --text-main
+  ); /* Just black for success in B&W theme, or keep green? I'll use black. */
+}
+
+.logout-btn {
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.logout-btn:hover {
+  background-color: #171717;
+  color: white;
+  border-color: #171717;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Stats Row */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+.dashboard-card {
+  background: var(--bg-card);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: #a3a3a3;
+}
+
+.dashboard-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #ffffff, #a3a3a3);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dashboard-card:hover::after {
+  opacity: 1;
+}
+
+.card-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1rem;
+}
+
+.card-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+/* History Section */
+.history-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.history-count-badge {
+  background-color: var(--primary);
+  color: #000000;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 700;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.history-item {
+  padding: 1rem;
+  background-color: transparent; /* Cleaner look */
+  border-radius: 8px; /* good habit, but invisible without border/bg */
+  border: none;
+  box-shadow: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--border-color); /* Add meaningful separator instead of box border? User said "remove the border color". I will remove it entirely. */
+  border-bottom: none;
+}
+
+.history-item:hover {
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.05
+  ); /* Subtle hover effect instead of border */
+  transform: none; /* remove scale effect */
+}
+
+.history-item.latest {
+  background: var(--bg-card);
+  border: none;
+  box-shadow: none;
+}
+
+.history-item.latest .search-term {
+  color: var(--text-highlight);
+  font-weight: 700;
+  font-size: 1.125rem; /* Keep latest big? User said "make the text size in the history view small". I should reduce valid for all including latest. */
+  font-size: 1rem;
+}
+
+.search-term {
+  font-size: 0.875rem; /* Small */
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.latest-badge {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 0.625rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 5rem 2rem;
+  color: var(--text-muted);
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 20px;
+  border: 2px dashed var(--border-color);
+  backdrop-filter: blur(4px);
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .dashboard-container {
+    padding: 2rem 1.25rem;
+    background-size: 16px 16px;
+  }
+
+  .dashboard-header {
+    display: block; /* Stack layout */
+    position: relative; /* For absolute button */
+    margin-bottom: 2.5rem;
+  }
+
+  .dashboard-title {
+    font-size: 1.75rem;
+    margin-bottom: 0.25rem;
+    max-width: 70%; /* Leave space for logout button */
+  }
+
+  .logout-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+
+  /* Ensure link row fits */
+  .header-link-row {
+    width: 100%; /* Full width */
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    justify-content: space-between; /* Push copy button to end */
+    margin-top: 1rem;
+    padding: 0.75rem 1rem; /* Larger touch area */
+  }
+
+  .header-link-url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: none; /* Let flex handle it */
+    flex: 1; /* Take available space */
+    min-width: 0; /* Allow shrinking below content size */
+    font-size: 0.85rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .dashboard-card {
+    padding: 1.5rem;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-body: #000000; /* Pure Black */
+    --bg-card: #0a0a0a; /* Neutral 950 */
+    --text-main: #ffffff;
+    --text-muted: #a3a3a3; /* Neutral 400 */
+    --border-color: #262626; /* Neutral 800 */
+    --primary: #ffffff; /* White */
+    --primary-hover: #e5e5e5;
+    --shadow-sm: 0 1px 2px 0 rgb(255 255 255 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(255 255 255 / 0.1);
+  }
+
+  .dashboard-container {
+    background-image: radial-gradient(#262626 1px, transparent 1px);
+  }
+
+  .dashboard-title {
+    background: none;
+    -webkit-text-fill-color: var(--text-main);
+  }
+
+  .logout-btn {
+    background-color: #000000;
+    border-color: #262626;
+    color: #ffffff;
+  }
+
+  .logout-btn:hover {
+    background-color: #ffffff;
+    color: #000000;
+  }
+
+  .header-link-row {
+    background-color: #0a0a0a;
+  }
+
+  .header-link-url {
+    color: #ffffff;
+  }
+
+  .dashboard-card:hover::after {
+    background: linear-gradient(90deg, #ffffff, #a3a3a3);
+  }
+
+  .copy-btn-small {
+    color: #a3a3a3;
+  }
+
+  .copy-btn-small:hover {
+    background-color: #262626;
+    color: #ffffff;
+  }
+
+  .history-item.latest {
+    background-color: #0a0a0a;
+    border-color: #ffffff;
+    box-shadow: 0 0 0 1px #ffffff;
+  }
+
+  .history-count-badge {
+    color: #000000; /* Black text on white badge */
+  }
+
+  .latest-badge {
+    color: #000000;
+  }
+}

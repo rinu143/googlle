@@ -1,0 +1,282 @@
+import { useEffect, useState } from "react";
+import { sendPasswordResetEmail, signOut } from "firebase/auth";
+import {
+  collection,
+  getDocs,
+  setDoc,
+  doc,
+  deleteDoc,
+  getDoc,
+} from "firebase/firestore";
+import { auth, db } from "../firebase";
+import { getDeviceId } from "../services/deviceService";
+import { API_BASE } from "../config/api";
+import "./Admin.css";
+
+export default function Admin() {
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [performers, setPerformers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [signupPrice, setSignupPrice] = useState("");
+  const [savingPrice, setSavingPrice] = useState(false);
+
+  const loadPerformers = async () => {
+    const [usersSnap, slugsSnap] = await Promise.all([
+      getDocs(collection(db, "users")),
+      getDocs(collection(db, "slugs")),
+    ]);
+
+    const slugByUid = {};
+    slugsSnap.forEach((d) => {
+      const uid = d.data()?.uid;
+      if (uid) slugByUid[uid] = d.id;
+    });
+
+    const list = [];
+    usersSnap.forEach((d) => {
+      if (d.data().role === "performer") {
+        list.push({
+          id: d.id,
+          ...d.data(),
+          slug: d.data().slug || slugByUid[d.id] || "",
+        });
+      }
+    });
+    setPerformers(list);
+  };
+
+  const loadSignupPrice = async () => {
+    const configSnap = await getDoc(doc(db, "config", "app"));
+    if (configSnap.exists()) {
+      setSignupPrice(String(configSnap.data().signupPrice ?? ""));
+    }
+  };
+
+  useEffect(() => {
+    loadPerformers();
+    loadSignupPrice();
+  }, []);
+
+  const create = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedPhone = phone.trim();
+
+    if (!normalizedEmail || !/^\d{10}$/.test(normalizedPhone)) {
+      alert("Enter valid email and 10 digit phone number.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/admin-create-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          phone: normalizedPhone,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create performer.");
+      }
+
+      alert("Performer created successfully. Credentials sent by email.");
+      setEmail("");
+      setPhone("");
+      loadPerformers();
+    } catch (error) {
+      console.error(error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveSignupPrice = async () => {
+    const parsedPrice = Number(signupPrice);
+    if (!parsedPrice || parsedPrice <= 0) {
+      alert("Enter a valid signup price.");
+      return;
+    }
+
+    setSavingPrice(true);
+    try {
+      await setDoc(
+        doc(db, "config", "app"),
+        { signupPrice: parsedPrice },
+        { merge: true },
+      );
+      alert("Signup price updated.");
+    } catch (error) {
+      console.error(error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      setSavingPrice(false);
+    }
+  };
+
+  const remove = async (id, slug) => {
+    if (!confirm("Are you sure you want to delete this performer?")) return;
+
+    await deleteDoc(doc(db, "users", id));
+    if (slug) {
+      await deleteDoc(doc(db, "slugs", slug));
+    }
+
+    loadPerformers();
+  };
+
+  const resetPassword = async (performerEmail) => {
+    try {
+      await sendPasswordResetEmail(auth, performerEmail);
+      alert(`Password reset email sent to ${performerEmail}`);
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const logout = async () => {
+    const uid = auth.currentUser?.uid;
+    const deviceId = getDeviceId();
+
+    if (uid) {
+      try {
+        await deleteDoc(doc(db, "sessions", uid, "devices", deviceId));
+      } catch (e) {
+        console.error("Error removing session", e);
+      }
+    }
+
+    await signOut(auth);
+    localStorage.removeItem("savedEmail");
+    localStorage.removeItem("savedPassword");
+    window.location.href = "/login";
+  };
+
+  return (
+    <div className="admin-container">
+      <main className="admin-main">
+        <header className="admin-header">
+          <div>
+            <h1 className="admin-title">Admin</h1>
+            <p className="admin-subtitle">
+              Manage performers and access control.
+            </p>
+          </div>
+          <button onClick={logout} className="admin-logout">
+            Logout
+          </button>
+        </header>
+
+        <div className="admin-grid">
+          <div className="admin-card admin-card-wide">
+            <div className="admin-card-header">
+              <h3 className="admin-card-title">Create Performer</h3>
+            </div>
+            <div className="admin-form">
+              <input
+                className="admin-input"
+                placeholder="Email Address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                className="admin-input"
+                placeholder="Phone Number"
+                value={phone}
+                onChange={(e) =>
+                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                }
+              />
+              <button className="admin-btn" onClick={create} disabled={loading}>
+                {loading ? "Creating..." : "Create Account"}
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-card">
+            <div className="admin-card-header">
+              <h3 className="admin-card-title">Signup Pricing</h3>
+            </div>
+            <div className="admin-form">
+              <input
+                className="admin-input"
+                type="number"
+                min="1"
+                placeholder="Signup Price (INR)"
+                value={signupPrice}
+                onChange={(e) => setSignupPrice(e.target.value)}
+              />
+              <button
+                className="admin-btn"
+                onClick={saveSignupPrice}
+                disabled={savingPrice}
+              >
+                {savingPrice ? "Saving..." : "Save Price"}
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-card">
+            <div className="admin-card-header">
+              <h3 className="admin-card-title">
+                Performers ({performers.length})
+              </h3>
+            </div>
+            <div className="performer-list">
+              {performers.length === 0 ? (
+                <p style={{ color: "#6b7280", textAlign: "center" }}>
+                  No performers found.
+                </p>
+              ) : (
+                performers.map((p) => (
+                  <div key={p.id} className="performer-item">
+                    <div className="performer-info">
+                      <span className="performer-email">{p.email}</span>
+                      <span className="performer-phone">
+                        {p.phone || "No phone"}
+                      </span>
+                      {p.slug ? (
+                        <a
+                          href={`/${p.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="performer-link"
+                        >
+                          {window.location.origin}/{p.slug} -&gt;
+                        </a>
+                      ) : (
+                        <span className="performer-link">Slug missing</span>
+                      )}
+                    </div>
+                    <div className="performer-actions">
+                      <button
+                        className="btn-secondary"
+                        onClick={() => resetPassword(p.email)}
+                        title="Send Reset Password Email"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        className="btn-danger"
+                        onClick={() => remove(p.id, p.slug)}
+                        title="Delete User"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,342 @@
+/* SearchBox.css */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.google-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* Allow growing */
+  font-family: arial, sans-serif;
+  background-color: #fff;
+  justify-content: space-between;
+}
+
+/* Header */
+.google-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 6px;
+  height: 48px; /* Approx height */
+  padding-right: 20px;
+  font-size: 13px;
+}
+
+.google-nav-link {
+  color: #000;
+  opacity: 0.87;
+  text-decoration: none;
+  margin-right: 15px;
+  line-height: 24px;
+}
+
+.google-nav-link:hover {
+  text-decoration: underline;
+}
+
+.google-app-icon {
+  margin-right: 15px;
+  opacity: 0.6;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.google-app-icon:hover {
+  opacity: 1;
+}
+
+.google-profile-icon {
+  background-color: #efefef; /* Placeholder color */
+  color: #fff;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  background-image: url("https://lh3.googleusercontent.com/ogw/AF2bZyiq... (placeholder)");
+  background-size: cover;
+}
+
+/* Main Content */
+.google-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-grow: 1;
+  margin-top: -100px; /* Push it slightly up visually like real Google */
+  justify-content: center;
+}
+
+.google-logo {
+  margin-bottom: 20px;
+  height: 92px;
+}
+
+.google-search-bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 584px;
+  height: 44px; /* 46px border box */
+  border: 1px solid #dfe1e5;
+  border-radius: 24px;
+  padding: 0 14px; /* Balanced padding */
+  margin: 0 auto;
+  transition:
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+
+.google-search-bar:hover,
+.google-search-bar:focus-within {
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+  border-color: rgba(223, 225, 229, 0);
+  background-color: #fff;
+}
+
+.search-icon-wrapper {
+  color: #9aa0a6;
+  padding-right: 10px;
+  display: flex;
+  align-items: center;
+  margin-top: -2px;
+}
+
+.google-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  line-height: 24px;
+  background: transparent;
+  height: 100%;
+}
+
+.google-input-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 10px;
+}
+
+.google-tool-icon {
+  cursor: pointer;
+  height: 24px;
+  width: 24px;
+}
+
+.google-buttons {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.google-btn {
+  background-color: #f8f9fa;
+  border: 1px solid #f8f9fa;
+  border-radius: 4px;
+  color: #3c4043;
+  font-family: arial, sans-serif;
+  font-size: 14px;
+  margin: 0 4px;
+  padding: 0 16px;
+  line-height: 27px;
+  height: 36px;
+  min-width: 54px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.google-btn:hover {
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  background-color: #f8f9fa;
+  border: 1px solid #dadce0;
+  color: #202124;
+}
+
+/* Footer */
+.google-footer {
+  background: #f2f2f2;
+  color: #70757a;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+.google-footer-location {
+  padding: 15px 30px;
+  border-bottom: 1px solid #dadce0;
+}
+
+.google-footer-links {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 30px;
+  flex-wrap: wrap;
+}
+
+.google-link-group {
+  display: flex;
+  gap: 30px;
+}
+
+.google-footer-link {
+  color: #70757a;
+  text-decoration: none;
+}
+
+.google-footer-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 780px) {
+  .google-footer-links {
+    justify-content: center;
+    gap: 10px;
+  }
+  .google-link-group {
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .google-header {
+    padding: 10px 16px;
+    justify-content: flex-end; /* Align items to the right */
+  }
+
+  .google-nav-link {
+    margin-right: 15px;
+    font-size: 13px;
+    display: inline-block; /* Visible on mobile */
+  }
+
+  .google-logo {
+    height: 50px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+
+  /* Main content should be higher up on mobile */
+  .google-main {
+    margin-top: 0; /* Reset negative margin */
+    justify-content: flex-start;
+    padding-top: 20px; /* Reduced padding to fit keyboard/content */
+    padding-bottom: 20px;
+    width: 100%;
+  }
+
+  .google-search-bar {
+    width: 90%;
+    max-width: none;
+    height: 48px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Always show shadow on mobile */
+    border-color: transparent;
+  }
+
+  .google-buttons {
+    display: none !important;
+  }
+
+  .google-footer {
+    background: #f2f2f2;
+    text-align: center;
+  }
+
+  .google-footer-links {
+    flex-direction: column;
+    gap: 15px;
+    padding-bottom: 20px;
+    align-items: center;
+  }
+
+  .google-link-group {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+  }
+}
+/* Trending Searches Section */
+.trending-section {
+  margin-top: 30px;
+  width: 100%;
+  max-width: 584px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.trending-title {
+  font-size: 14px;
+  color: #70757a;
+  margin-bottom: 15px;
+  font-family: "Google Sans", arial, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trending-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start; /* Aligns with title */
+}
+
+.trending-chip {
+  background: #fff;
+  border: 1px solid #dfe1e5;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  color: #3c4043;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.trending-chip:hover {
+  background-color: #f8f9fa;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  border-color: #dadce0;
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+  .trending-section {
+    margin-top: 20px;
+    padding: 0 20px;
+  }
+
+  .trending-grid {
+    justify-content: flex-start;
+  }
+
+  .trending-chip {
+    font-size: 13px;
+    padding: 6px 14px;
+  }
+}
