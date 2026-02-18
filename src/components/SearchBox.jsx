@@ -78,26 +78,51 @@ export default function SearchBox({ slug }) {
   return (
     <div className="google-container">
       {/* Header */}
-      <div className="google-header">
-        <a href="https://mail.google.com" className="google-nav-link">
-          Gmail
-        </a>
-        <a href="https://www.google.com/imghp" className="google-nav-link">
-          Images
-        </a>
-        <div className="google-app-icon" title="Google apps">
-          <svg focusable="false" viewBox="0 0 24 24" width="24" height="24">
-            <path
-              d="M6,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM6,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM12,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM16,6c0,1.1 0.9,2 2,2s2,-0.9 2,-2 -0.9,-2 -2,-2 -2,0.9 -2,2zM12,8c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,14c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2zM18,20c1.1,0 2,-0.9 2,-2s-0.9,-2 -2,-2 -2,0.9 -2,2 0.9,2 2,2z"
-              fill="#5f6368"
-            ></path>
-          </svg>
+      <header className="mobile-google-header">
+        <div className="mobile-header-left">
+          <button className="mobile-icon-btn" aria-label="Filter" type="button">
+            <svg
+              className="mobile-icon"
+              fill="currentColor"
+              viewBox="0 -960 960 960"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M209-120q-42 0-70.5-28.5T110-217q0-14 3-25.5t9-21.5l228-341q10-14 15-31t5-34v-110h-20q-13 0-21.5-8.5T320-810q0-13 8.5-21.5T350-840h260q13 0 21.5 8.5T640-810q0 13-8.5 21.5T610-780h-20v110q0 17 5 34t15 31l227 341q6 9 9.5 20.5T850-217q0 41-28 69t-69 28H209Zm221-660v110q0 26-7.5 50.5T401-573L276-385q-6 8-8.5 16t-2.5 16q0 23 17 39.5t42 16.5q28 0 56-12t80-47q69-45 103.5-62.5T633-443q4-1 5.5-4.5t-.5-7.5l-78-117q-15-21-22.5-46t-7.5-52v-110H430Z"></path>
+            </svg>
+          </button>
+          <div className="mobile-tabs">
+            <a href="#" className="mobile-tab mobile-tab-active">
+              ALL
+            </a>
+            <a href="#" className="mobile-tab">
+              IMAGES
+            </a>
+          </div>
         </div>
-        <div className="google-profile-icon" title="Google Account">
-          {/* Placeholder for user initial or profile pic */}
-          <span>A</span>
+
+        <div className="mobile-header-right">
+          <button
+            className="mobile-icon-btn mobile-notification-btn"
+            aria-label="Notifications"
+            type="button"
+          >
+            <svg className="mobile-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path>
+            </svg>
+            <span className="mobile-notification-badge">4</span>
+          </button>
+
+          <button className="mobile-icon-btn" aria-label="Google apps" type="button">
+            <svg className="mobile-icon" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6,8c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S4.9,8,6,8z M12,20c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S10.9,20,12,20z M6,20 c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S4.9,20,6,20z M6,14c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S4.9,14,6,14z M12,14c1.1,0,2-0.9,2-2 s-0.9-2-2-2s-2,0.9-2,2S10.9,14,12,14z M18,14c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S16.9,14,18,14z M18,8c1.1,0,2-0.9,2-2 s-0.9-2-2-2s-2,0.9-2,2S16.9,8,18,8z M12,8c1.1,0,2-0.9,2-2s-0.9-2-2-2s-2,0.9-2,2S10.9,8,12,8z M18,20c1.1,0,2-0.9,2-2s-0.9-2-2-2 s-2,0.9-2,2S16.9,20,18,20z"></path>
+            </svg>
+          </button>
+
+          <button className="mobile-signin-btn" type="button">
+            Sign in
+          </button>
         </div>
-      </div>
+      </header>
 
       {/* Main Search Area */}
       <div className="google-main">
@@ -169,6 +194,47 @@ export default function SearchBox({ slug }) {
             >
               I'm Feeling Lucky
             </button>
+          </div>
+
+          <div className="google-languages">
+            <p className="google-languages-label">Google offered in:</p>
+            <div className="google-languages-links">
+              <a href="#" className="google-language-link">
+                हिन्दी
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                বাংলা
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                తెలుగు
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                मराठी
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                தமிழ்
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                ગુજરાતી
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                ಕನ್ನಡ
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                മലയാളം
+              </a>
+              <span className="google-language-sep">·</span>
+              <a href="#" className="google-language-link">
+                ਪੰਜਾਬੀ
+              </a>
+            </div>
           </div>
 
           {/* Trending Section: Between SearchBar and Buttons */}
