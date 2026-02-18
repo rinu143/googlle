@@ -6,19 +6,33 @@ import SearchBox from "../components/SearchBox";
 
 export default function Audience() {
   const { slug } = useParams();
-  const [valid, setValid] = useState(null);
+  const [status, setStatus] = useState("loading");
 
   useEffect(() => {
+    let active = true;
+
     const check = async () => {
-      const ref = doc(db, "slugs", slug);
-      const snap = await getDoc(ref);
-      setValid(snap.exists());
+      setStatus("loading");
+      try {
+        const ref = doc(db, "slugs", slug);
+        const snap = await getDoc(ref);
+        if (!active) return;
+        setStatus(snap.exists() ? "valid" : "invalid");
+      } catch (error) {
+        if (!active) return;
+        setStatus("invalid");
+      }
     };
+
     check();
+
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
-  // if (valid === null) return <h2>Loading...</h2>;
-  if (!valid) return <h2>Invalid link</h2>;
+  if (status === "loading") return <div />;
+  if (status === "invalid") return <h2>Invalid link</h2>;
 
   return <SearchBox slug={slug} />;
 }
