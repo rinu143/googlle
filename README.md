@@ -1,168 +1,125 @@
-Mentalism Performer Portal – System Design README
+# Mentalism Performer Portal
 
-Project Overview
-This project is a web platform that allows a mentalist performer to instantly know what a spectator searches on a special link provided to them. Each performer receives a unique audience link and a private dashboard link. The system is managed by a single main admin who creates performer accounts and monitors usage.
+A full-stack mentalism tool that instantly reveals spectator searches to a performer's private dashboard. This project consists of a React frontend for the user interface and an Express.js backend for administrative tasks, payments, and email notifications.
 
-The platform uses Firebase as the backend and React as the frontend. Email notifications are sent using Gmail SMTP when new performers are created.
+## Features
 
-Primary Flow
+- **Real-time Reveal**: Performers see what spectators search instantly.
+- **Unique Audience Links**: Custom slug-based links for each performer (e.g., `domain.com/jon`).
+- **Admin Dashboard**: Manage performers and monitor platform usage.
+- **Payment Integration**: Automated signup flow with Razorpay payments.
+- **Email Notifications**: Automated welcome emails with credentials via Resend.
+- **Device Management**: Security feature limiting performers to 2 active devices.
+- **Search History**: Performer-specific history of searches.
 
-1. Admin creates a performer account
-2. System sends welcome email containing:
+## Technology Stack
 
-   * username (email)
-   * password
-   * performer login page link
-   * audience link
-3. Performer logs into dashboard
-4. Spectator opens performer audience link
-5. Spectator searches a word
-6. Spectator is redirected to real Google search results
-7. Performer sees the searched word instantly on dashboard
-8. Searches are stored in history until manually deleted
+### Frontend
 
-User Roles
+- **React 19** (Vite)
+- **Firebase** (Auth, Firestore)
+- **React Router DOM**
+- **NanoID**
 
-Admin
+### Backend (Node.js)
 
-* Unlimited device login
-* Creates performer accounts
-* Edits performer details
-* Removes performers
-* Views number of performers and their status
+- **Express.js**
+- **Firebase Admin SDK**
+- **Razorpay** (Payments)
+- **Resend** (Email Service)
+- **Nodemailer** (Legacy/Alternative)
 
-Performer
+## Prerequisites
 
-* Can login on maximum 2 devices at same time
-* If logging into a third device, oldest session is logged out with warning
-* Has a personal audience link
-* Sees live search words
-* Can view history with pagination
-* Can manually delete history
+- Node.js (v18+)
+- Firebase Project (Firestore, Authentication)
+- Razorpay Account (Key ID & Secret)
+- Resend API Key
+- Google Service Account Credentials (`firebaseAdmin.json`)
 
-Audience
+## Installation & Setup
 
-* Uses performer’s unique link
-* Searches a word in the search page the search page will be clone of [https://www.google-in.co/jet]
-* Gets redirected to real Google search results
-* Does not login
+### 1. Repository Setup
 
-Unique Link System
-Each performer receives a permanent slug link generated from their email.
+```bash
+git clone <repository-url>
+cd mentalism
+npm install
+```
 
-Example: <br/>
-domain.com/login (login page for every performer) <br/>
-domain.com/dashboard (After login redirect to dashboard) <br/>
-domain.com/jon (audience link for performer with email starting with "jon")
+### 2. Frontend Configuration
 
-Slug generation rule:
-First 3 letters of email + uniqueness check in database.
+Create a `.env` file in the root directory with your Firebase config:
 
-Two links exist per performer:
-Audience link
-Used by spectators to perform searches
+```env
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
 
-Performer dashboard link
-Used by performer to login and view searches
+Start the frontend:
 
-Device Limit Logic
-Only performers are limited to 2 devices.
+```bash
+npm run dev
+```
 
-When performer logs in:
-If active sessions < 2 → allow login
-If active sessions = 2 → remove oldest session and allow login
-A warning message appears on the removed device
+### 3. Backend Configuration
 
-Admin has no device restriction.
+Navigate to the server directory:
 
-Search Handling
-Audience enters search word on performer audience page.
-System stores the word in Firebase.
-Immediately redirects user to:
-https://www.google.com/search?q=entered_word
+```bash
+cd server
+npm install
+```
 
-Performer dashboard listens in realtime and displays:
-Latest search
-Search history
-“Latest” indicator badge on newest search
+**Firebase Admin Setup:**
 
-History Management
-Search history is stored per performer.
-No automatic deletion.
-Performer can manually clear history anytime.
+1. Go to Firebase Console -> Project Settings -> Service Accounts.
+2. Generate a new private key.
+3. Save the JSON file as `firebaseAdmin.json` inside the `server/` directory.
 
-Admin Dashboard Features
-Admin panel shows:
-Total number of performers
-Performer email
-Slug link
-Active status
-Last activity time
+**Environment Variables:**
+Create a `.env` file in the `server/` directory:
 
-Admin controls:
-Create performer
-Edit performer email/password
-Delete performer
-Disable performer
+```env
+PORT=5000
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RESEND_API_KEY=your_resend_api_key
+FRONTEND_URL=http://localhost:5173
+```
 
-Email System
-When admin creates a performer:
-System sends email using Gmail SMTP.
+Start the backend server:
 
-Email contains:
-Welcome message
-Login credentials
-Performer dashboard link
-Audience link
+```bash
+npm run dev
+```
 
-A delay of a few seconds is used between email sends to avoid Gmail rate limits.
+## Usage Flow
 
-Technology Stack
+1. **Admin/Signup**: New performers sign up via the portal and pay the fee (verified by Razorpay).
+2. **Account Creation**: The backend creates a Firebase user and a corresponding Firestore document.
+3. **Email**: The system emails the performer their login credentials and magic link.
+4. **Performance**:
+   - Performer logs in at `/login`.
+   - Spectator visits the magic link (e.g., `/magic`) and "searches" for a thought.
+   - Result appears instantly on the performer's dashboard.
 
-Frontend
-React
+## Deployment
 
-Backend
-Firebase Authentication
-Firebase Firestore Database
+### Frontend
 
-Email
-Gmail SMTP
+Build the React app:
 
-Hosting
-Vercel
+```bash
+npm run build
+```
 
-Database Structure Concept
+Deploy the `dist/` folder to Vercel, Netlify, or Firebase Hosting.
 
-users collection
-stores performer profile and role
+### Backend
 
-sessions collection
-stores active device sessions
-
-searches collection
-stores search history per performer
-
-slugs collection
-maps slug links to performer IDs
-
-Security Rules Concept
-Only admin can create or delete performers
-Only performer can read their own searches
-Audience can only write search word via slug mapping
-No audience access to user list
-
-Realtime Behaviour
-Performer dashboard subscribes to searches collection.
-New search instantly appears with “latest” label.
-Older latest label moves down automatically.
-
-System Purpose
-This platform is intended for live entertainment mentalism performance demonstrations where a performer reveals what a spectator searched moments earlier.
-
-Future Expansion Possibilities
-Multiple admins
-Analytics panel
-Performance statistics
-Temporary sessions mode
-Scheduled automatic cleanup option
+The `server/` directory should be deployed to a Node.js environment (e.g., Render, Railway, Heroku). Ensure environment variables and `firebaseAdmin.json` (via secrets management) are correctly configured.
