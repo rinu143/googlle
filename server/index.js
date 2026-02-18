@@ -48,8 +48,30 @@ function generatePassword(email, phone) {
   return part1 + part2 + random;
 }
 
-function generateSlug(email) {
-  return email.slice(0, 3).toLowerCase();
+async function generateUniqueSlug(email) {
+  const localPart = (email || "").split("@")[0] || "";
+  const cleaned = localPart.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalized = cleaned || "user";
+
+  const startLength = Math.min(3, normalized.length);
+  for (let length = startLength; length <= normalized.length; length++) {
+    const candidate = normalized.slice(0, length);
+    const candidateSnap = await db.collection("slugs").doc(candidate).get();
+    if (!candidateSnap.exists) {
+      return candidate;
+    }
+  }
+
+  const base = normalized.slice(0, Math.min(3, normalized.length)) || "user";
+  let suffix = 1;
+  while (true) {
+    const candidate = `${base}${suffix}`;
+    const candidateSnap = await db.collection("slugs").doc(candidate).get();
+    if (!candidateSnap.exists) {
+      return candidate;
+    }
+    suffix++;
+  }
 }
 
 function parseBearerToken(req) {
@@ -74,9 +96,9 @@ async function verifyAdminRequester(req) {
   }
 }
 
-async function deleteQueryInBatches(buildQuery, batchSize = 500) {
+async function deleteQueryBatch(baseQuery, batchSize = 500) {
   while (true) {
-    const snap = await buildQuery().limit(batchSize).get();
+    const snap = await baseQuery.limit(batchSize).get();
     if (snap.empty) break;
 
     const batch = db.batch();
@@ -172,7 +194,7 @@ app.post("/verify-payment", async (req, res, next) => {
       });
 
     const password = generatePassword(email, phone);
-    const slug = generateSlug(email);
+    const slug = await generateUniqueSlug(email);
 
     // create auth user
     const userRecord = await auth.createUser({
@@ -213,7 +235,7 @@ app.post("/admin-create-user", async (req, res, next) => {
     const { email, phone } = req.body;
 
     const password = generatePassword(email, phone);
-    const slug = generateSlug(email);
+    const slug = await generateUniqueSlug(email);
 
     const userRecord = await auth.createUser({
       email,
@@ -261,29 +283,29 @@ app.delete("/admin-delete-user/:uid", async (req, res, next) => {
 
     const userRef = db.collection("users").doc(uid);
     const userSnap = await userRef.get();
-    if (!userSnap.exists) {
-      return res.status(404).json({
-        error: "User not found",
-        message: "User not found",
-      });
+    const slug = userSnap.exists ? userSnap.data()?.slug : null;
+
+    // 1) Delete searches in batches by performer slug
+    if (slug) {
+      await deleteQueryBatch(db.collection("searches").where("slug", "==", slug));
     }
 
-    const slug = userSnap.data()?.slug;
-
-    // Atomic gate: if auth deletion fails, stop and keep Firestore data untouched.
-    await auth.deleteUser(uid);
-
-    await userRef.delete();
-
+    // 2) Delete slug document
     if (slug) {
       await db.collection("slugs").doc(slug).delete();
-    } else {
-      await deleteQueryInBatches(() => db.collection("slugs").where("uid", "==", uid));
     }
 
-    await deleteQueryInBatches(() => db.collection("sessions").doc(uid).collection("devices"));
-    await db.collection("sessions").doc(uid).delete();
-    await deleteQueryInBatches(() => db.collection("searches").where("uid", "==", uid));
+    // 3) Delete user document
+    await userRef.delete();
+
+    // 4) Delete auth user LAST, but handle non-existing user gracefully
+    try {
+      await auth.deleteUser(uid);
+    } catch (error) {
+      if (error?.code !== "auth/user-not-found") {
+        throw error;
+      }
+    }
 
     res.json({ success: true });
   } catch (error) {
