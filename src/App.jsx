@@ -35,6 +35,14 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/invalid"
+        element={
+          <h2 style={{ textAlign: "center", fontFamily: "arial, sans-serif" }}>
+            Invalid link
+          </h2>
+        }
+      />
       <Route path="/:slug" element={<Audience />} />
     </Routes>
   );

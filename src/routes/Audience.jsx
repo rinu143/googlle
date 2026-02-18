@@ -1,26 +1,27 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import SearchBox from "../components/SearchBox";
 
 export default function Audience() {
   const { slug } = useParams();
-  const [status, setStatus] = useState("loading");
+  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
 
     const check = async () => {
-      setStatus("loading");
       try {
         const ref = doc(db, "slugs", slug);
         const snap = await getDoc(ref);
         if (!active) return;
-        setStatus(snap.exists() ? "valid" : "invalid");
+        if (!snap.exists()) {
+          navigate("/invalid", { replace: true });
+        }
       } catch (error) {
         if (!active) return;
-        setStatus("invalid");
+        navigate("/invalid", { replace: true });
       }
     };
 
@@ -29,10 +30,7 @@ export default function Audience() {
     return () => {
       active = false;
     };
-  }, [slug]);
-
-  if (status === "loading") return <div />;
-  if (status === "invalid") return <h2>Invalid link</h2>;
+  }, [slug, navigate]);
 
   return <SearchBox slug={slug} />;
 }
