@@ -120,15 +120,32 @@ export default function Admin() {
     }
   };
 
-  const remove = async (id, slug) => {
+  const remove = async (id) => {
     if (!confirm("Are you sure you want to delete this performer?")) return;
 
-    await deleteDoc(doc(db, "users", id));
-    if (slug) {
-      await deleteDoc(doc(db, "slugs", slug));
-    }
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error("You are not authenticated.");
+      }
 
-    loadPerformers();
+      const response = await fetch(`${API_BASE}/admin-delete-user/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete performer.");
+      }
+
+      setPerformers((prev) => prev.filter((p) => p.id !== id));
+    } catch (error) {
+      console.error(error);
+      alert(`Error: ${error.message}`);
+    }
   };
 
   const resetPassword = async (performerEmail) => {
@@ -264,7 +281,7 @@ export default function Admin() {
                       </button>
                       <button
                         className="btn-danger"
-                        onClick={() => remove(p.id, p.slug)}
+                        onClick={() => remove(p.id)}
                         title="Delete User"
                       >
                         Delete

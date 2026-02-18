@@ -52,6 +52,41 @@ function generateSlug(email) {
   return email.slice(0, 3).toLowerCase();
 }
 
+function parseBearerToken(req) {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    const error = new Error("Missing or invalid Authorization header");
+    error.status = 401;
+    throw error;
+  }
+  return authHeader.slice("Bearer ".length).trim();
+}
+
+async function verifyAdminRequester(req) {
+  const token = parseBearerToken(req);
+  const decoded = await auth.verifyIdToken(token);
+  const requesterSnap = await db.collection("users").doc(decoded.uid).get();
+
+  if (!requesterSnap.exists || requesterSnap.data()?.role !== "admin") {
+    const error = new Error("Admin access required");
+    error.status = 403;
+    throw error;
+  }
+}
+
+async function deleteQueryInBatches(buildQuery, batchSize = 500) {
+  while (true) {
+    const snap = await buildQuery().limit(batchSize).get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+
+    if (snap.size < batchSize) break;
+  }
+}
+
 // ---------- CREATE ORDER ----------
 app.post("/create-order", async (req, res, next) => {
   try {
@@ -207,6 +242,52 @@ app.post("/admin-create-user", async (req, res, next) => {
     res.json({ success: true });
   } catch (error) {
     console.error("ADMIN CREATE USER ERROR:", error);
+    next(error);
+  }
+});
+
+// ---------- ADMIN DELETE USER ----------
+app.delete("/admin-delete-user/:uid", async (req, res, next) => {
+  try {
+    await verifyAdminRequester(req);
+
+    const { uid } = req.params;
+    if (!uid) {
+      return res.status(400).json({
+        error: "Missing uid",
+        message: "Missing uid",
+      });
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      return res.status(404).json({
+        error: "User not found",
+        message: "User not found",
+      });
+    }
+
+    const slug = userSnap.data()?.slug;
+
+    // Atomic gate: if auth deletion fails, stop and keep Firestore data untouched.
+    await auth.deleteUser(uid);
+
+    await userRef.delete();
+
+    if (slug) {
+      await db.collection("slugs").doc(slug).delete();
+    } else {
+      await deleteQueryInBatches(() => db.collection("slugs").where("uid", "==", uid));
+    }
+
+    await deleteQueryInBatches(() => db.collection("sessions").doc(uid).collection("devices"));
+    await db.collection("sessions").doc(uid).delete();
+    await deleteQueryInBatches(() => db.collection("searches").where("uid", "==", uid));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("ADMIN DELETE USER ERROR:", error);
     next(error);
   }
 });
