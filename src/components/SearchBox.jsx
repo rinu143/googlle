@@ -56,8 +56,11 @@ export default function SearchBox({ slug }) {
     } catch (error) {
       console.error("Search save failed", error);
     } finally {
-      window.location.href =
-        "https://www.google.com/search?q=" + encodeURIComponent(q);
+      // window.location.href =
+      //   "https://www.google.com/search?q=" + encodeURIComponent(q);
+      window.location.replace(
+        "https://www.google.com/search?q=" + encodeURIComponent(q),
+      );
     }
   };
 
