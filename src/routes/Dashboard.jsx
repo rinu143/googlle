@@ -128,6 +128,13 @@ export default function Dashboard() {
         { isActive: nextValue },
         { merge: true },
       );
+      if (slug) {
+        await setDoc(
+          doc(db, "publicPerformers", slug),
+          { enabled: nextValue },
+          { merge: true },
+        );
+      }
       setIsActive(nextValue);
     } catch (error) {
       console.error("Failed to update link status", error);

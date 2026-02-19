@@ -113,6 +113,11 @@ async function deleteQueryBatch(baseQuery, batchSize = 500) {
   }
 }
 
+async function syncPublicPerformer(slug, enabled) {
+  if (!slug) return;
+  await db.collection("publicPerformers").doc(slug).set({ enabled: Boolean(enabled) });
+}
+
 async function sendPush(uid, word) {
   if (!uid || !word) return;
 
@@ -340,6 +345,7 @@ app.post("/verify-payment", async (req, res, next) => {
     await db.collection("slugs").doc(slug).set({
       uid: userRecord.uid,
     });
+    await syncPublicPerformer(slug, true);
 
     await sendWelcomeEmail(email, password, slug).catch((e) => {
       console.error("MAIL ERROR:", e);
@@ -391,6 +397,7 @@ app.post("/admin-create-user", async (req, res, next) => {
     await db.collection("slugs").doc(slug).set({
       uid: userRecord.uid,
     });
+    await syncPublicPerformer(slug, true);
 
     await sendWelcomeEmail(email, password, slug).catch((e) => {
       console.error("MAIL ERROR:", e);
@@ -428,6 +435,7 @@ app.delete("/admin-delete-user/:uid", async (req, res, next) => {
     // 2) Delete slug document
     if (slug) {
       await db.collection("slugs").doc(slug).delete();
+      await db.collection("publicPerformers").doc(slug).delete();
     }
 
     // 3) Delete user document

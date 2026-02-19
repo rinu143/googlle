@@ -16,18 +16,16 @@
     return path;
   }
 
-  function getApiBase() {
-    if (window.location.hostname === "localhost") return "http://localhost:3000";
-    return "https://googlle-api.onrender.com";
-  }
-
-  async function getSlugStatus(slug) {
-    const apiBase = getApiBase();
-    const res = await fetch(
-      `${apiBase}/slug-status/${encodeURIComponent(slug)}`,
-      { method: "GET" },
-    );
-    if (!res.ok) throw new Error("Slug status lookup failed");
+  async function getPublicPerformer(slug) {
+    const projectId = "mentalism-portal";
+    const apiKey = "AIzaSyCERFbeqGpsN_jwN68nE1PxpFu4me8mir4";
+    const url =
+      `https://firestore.googleapis.com/v1/projects/${projectId}` +
+      `/databases/(default)/documents/publicPerformers/${encodeURIComponent(slug)}` +
+      `?key=${apiKey}`;
+    const res = await fetch(url, { method: "GET" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error("Public performer lookup failed");
     return res.json();
   }
 
@@ -39,13 +37,9 @@
     }
 
     try {
-      const status = await getSlugStatus(slug);
-      if (!status?.exists) {
-        window.__startReactApp();
-        return;
-      }
-
-      if (status.isActive === false) {
+      const doc = await getPublicPerformer(slug);
+      const enabled = doc?.fields?.enabled?.booleanValue;
+      if (enabled === false) {
         window.location.replace("https://www.google.com");
         return;
       }

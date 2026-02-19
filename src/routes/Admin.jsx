@@ -180,6 +180,13 @@ export default function Admin() {
         },
         { merge: true },
       );
+      if (performer.slug) {
+        await setDoc(
+          doc(db, "publicPerformers", performer.slug),
+          { enabled: nextActive },
+          { merge: true },
+        );
+      }
 
       setPerformers((prev) =>
         prev.map((p) =>

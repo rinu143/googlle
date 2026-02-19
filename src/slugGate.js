@@ -16,16 +16,8 @@ export async function verifySlugBeforeRender() {
   if (!slug) return true;
 
   try {
-    const slugSnap = await getDoc(doc(db, "slugs", slug));
-    if (!slugSnap.exists()) return true;
-
-    const uid = slugSnap.data()?.uid;
-    if (!uid) return true;
-
-    const userSnap = await getDoc(doc(db, "users", uid));
-    if (!userSnap.exists()) return true;
-
-    if (userSnap.data()?.isActive === false) {
+    const publicPerformerSnap = await getDoc(doc(db, "publicPerformers", slug));
+    if (publicPerformerSnap.exists() && publicPerformerSnap.data()?.enabled === false) {
       window.location.replace("https://www.google.com");
       return false;
     }
