@@ -274,6 +274,50 @@ app.post("/push-search", async (req, res, next) => {
   }
 });
 
+// ---------- SAVE SEARCH ----------
+app.post("/save-search", async (req, res, next) => {
+  try {
+    const { slug, word } = req.body;
+    if (!slug || !word) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing slug or word",
+      });
+    }
+
+    const slugSnap = await db.collection("slugs").doc(slug).get();
+    if (!slugSnap.exists) {
+      return res.json({ success: true, saved: false });
+    }
+
+    const uid = slugSnap.data()?.uid;
+    if (!uid) {
+      return res.json({ success: true, saved: false });
+    }
+
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) {
+      return res.json({ success: true, saved: false });
+    }
+
+    if (userSnap.data()?.isActive === false) {
+      return res.json({ success: true, saved: false });
+    }
+
+    await db.collection("searches").add({
+      slug,
+      word,
+      time: FieldValue.serverTimestamp(),
+    });
+
+    await sendPush(uid, word);
+    return res.json({ success: true, saved: true });
+  } catch (error) {
+    console.error("SAVE SEARCH ERROR:", error);
+    next(error);
+  }
+});
+
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res, next) => {
   try {

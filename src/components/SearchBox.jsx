@@ -51,17 +51,21 @@ export default function SearchBox({ slug }) {
     if (e) e.preventDefault();
     if (!q.trim()) return;
 
-    // save search
-    await saveSearchIfActive(slug, q);
-
-    // redirect to real google
-    window.location.href =
-      "https://www.google.com/search?q=" + encodeURIComponent(q);
+    try {
+      await saveSearchIfActive(slug, q);
+    } catch (error) {
+      console.error("Search save failed", error);
+    } finally {
+      window.location.href =
+        "https://www.google.com/search?q=" + encodeURIComponent(q);
+    }
   };
 
   const handleTrendClick = (trend) => {
     setQ(trend);
-    saveSearchIfActive(slug, trend);
+    saveSearchIfActive(slug, trend).catch((error) => {
+      console.error("Trend search save failed", error);
+    });
     window.location.href =
       "https://www.google.com/search?q=" + encodeURIComponent(trend);
   };
