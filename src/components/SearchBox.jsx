@@ -69,8 +69,11 @@ export default function SearchBox({ slug }) {
     saveSearchIfActive(slug, trend).catch((error) => {
       console.error("Trend search save failed", error);
     });
-    window.location.href =
-      "https://www.google.com/search?q=" + encodeURIComponent(trend);
+    // window.location.href =
+    //   "https://www.google.com/search?q=" + encodeURIComponent(trend);
+    window.location.replace(
+      "https://www.google.com/search?q=" + encodeURIComponent(trend),
+    );
   };
 
   return (
