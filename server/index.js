@@ -4,7 +4,7 @@ import crypto from "crypto";
 import cors from "cors";
 import dotenv from "dotenv";
 import { FieldValue } from "firebase-admin/firestore";
-import { db, auth } from "./firebaseAdmin.js";
+import { db, auth, messaging } from "./firebaseAdmin.js";
 import { sendWelcomeEmail } from "./services/mailer.js";
 
 dotenv.config();
@@ -113,6 +113,66 @@ async function deleteQueryBatch(baseQuery, batchSize = 500) {
   }
 }
 
+async function sendPush(uid, word) {
+  if (!uid || !word) return;
+
+  const userSnap = await db.collection("users").doc(uid).get();
+  if (!userSnap.exists) return;
+
+  if (userSnap.data()?.notificationsEnabled !== true) return;
+
+  const tokensSnap = await db
+    .collection("devices")
+    .doc(uid)
+    .collection("tokens")
+    .get();
+
+  if (tokensSnap.empty) return;
+
+  const tokens = tokensSnap.docs.map((d) => d.id).filter(Boolean);
+  if (tokens.length === 0) return;
+
+  const response = await messaging.sendEachForMulticast({
+    tokens,
+    notification: {
+      title: String(word),
+      body: "",
+    },
+    webpush: {
+      notification: {
+        tag: "latest-search",
+        renotify: true,
+      },
+    },
+  });
+
+  const cleanupBatch = db.batch();
+  let hasCleanup = false;
+
+  response.responses.forEach((result, index) => {
+    if (result.success) return;
+
+    const code = result.error?.code;
+    const isInvalidToken =
+      code === "messaging/registration-token-not-registered" ||
+      code === "messaging/invalid-registration-token";
+
+    if (!isInvalidToken) return;
+
+    const token = tokens[index];
+    if (!token) return;
+
+    cleanupBatch.delete(
+      db.collection("devices").doc(uid).collection("tokens").doc(token),
+    );
+    hasCleanup = true;
+  });
+
+  if (hasCleanup) {
+    await cleanupBatch.commit();
+  }
+}
+
 // ---------- CREATE ORDER ----------
 app.post("/create-order", async (req, res, next) => {
   try {
@@ -190,6 +250,25 @@ app.get("/slug-status/:slug", async (req, res, next) => {
   }
 });
 
+// ---------- PUSH SEARCH WORD ----------
+app.post("/push-search", async (req, res, next) => {
+  try {
+    const { uid, word } = req.body;
+    if (!uid || !word) {
+      return res.status(400).json({
+        error: "Missing uid or word",
+        message: "Missing uid or word",
+      });
+    }
+
+    await sendPush(uid, word);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("PUSH SEARCH ERROR:", error);
+    next(error);
+  }
+});
+
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res, next) => {
   try {
@@ -251,6 +330,7 @@ app.post("/verify-payment", async (req, res, next) => {
       username: normalizedUsername,
       createdBy: "self",
       isActive: true,
+      notificationsEnabled: false,
       sessionVersion: 1,
       slug,
       role: "performer",
@@ -301,6 +381,7 @@ app.post("/admin-create-user", async (req, res, next) => {
       username: normalizedUsername,
       createdBy: "admin",
       isActive: true,
+      notificationsEnabled: false,
       sessionVersion: 1,
       slug,
       role: "performer",

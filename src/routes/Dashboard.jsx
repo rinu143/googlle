@@ -3,6 +3,11 @@ import { signOut } from "firebase/auth";
 import { deleteDoc, doc } from "firebase/firestore";
 import { getDeviceId } from "../services/deviceService";
 import {
+  clearPushToken,
+  getStoredPushToken,
+  requestPushToken,
+} from "../services/pushService";
+import {
   getDoc,
   getDocs,
   setDoc,
@@ -24,6 +29,9 @@ export default function Dashboard() {
   );
   const [isActive, setIsActive] = useState(true);
   const [togglingActive, setTogglingActive] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushToken, setPushToken] = useState(getStoredPushToken());
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -37,6 +45,7 @@ export default function Dashboard() {
           (auth.currentUser?.email || "").split("@")[0] || "Performer";
         setUsername(profile.username || fallbackUsername);
         setIsActive(profile.isActive !== false);
+        setNotificationsEnabled(profile.notificationsEnabled === true);
         let userSlug = profile.slug;
 
         if (!userSlug) {
@@ -80,12 +89,21 @@ export default function Dashboard() {
   const logout = async () => {
     const uid = auth.currentUser.uid;
     const deviceId = getDeviceId();
+    const token = getStoredPushToken();
 
     try {
       await deleteDoc(doc(db, "sessions", uid, "devices", deviceId));
     } catch (e) {
       console.error("Error removing session", e);
     }
+    if (token) {
+      try {
+        await deleteDoc(doc(db, "devices", uid, "tokens", token));
+      } catch (e) {
+        console.error("Error removing push token doc", e);
+      }
+    }
+    await clearPushToken();
 
     await signOut(auth);
     localStorage.removeItem("sessionVersion");
@@ -103,7 +121,7 @@ export default function Dashboard() {
 
   const togglePerformerLink = async () => {
     try {
-      setTogglingActive(false);
+      setTogglingActive(true);
       const nextValue = !isActive;
       await setDoc(
         doc(db, "users", auth.currentUser.uid),
@@ -115,6 +133,47 @@ export default function Dashboard() {
       console.error("Failed to update link status", error);
     } finally {
       setTogglingActive(false);
+    }
+  };
+
+  const togglePushNotifications = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    setPushBusy(true);
+    try {
+      if (!notificationsEnabled) {
+        const token = await requestPushToken();
+        await setDoc(doc(db, "devices", uid, "tokens", token), {
+          uid,
+          createdAt: Date.now(),
+        });
+        await setDoc(
+          doc(db, "users", uid),
+          { notificationsEnabled: true },
+          { merge: true },
+        );
+        setPushToken(token);
+        setNotificationsEnabled(true);
+      } else {
+        const tokenToDelete = pushToken || getStoredPushToken();
+        if (tokenToDelete) {
+          await deleteDoc(doc(db, "devices", uid, "tokens", tokenToDelete));
+        }
+        await clearPushToken();
+        await setDoc(
+          doc(db, "users", uid),
+          { notificationsEnabled: false },
+          { merge: true },
+        );
+        setPushToken("");
+        setNotificationsEnabled(false);
+      }
+    } catch (error) {
+      console.error("Failed to toggle push notifications", error);
+      alert(error.message || "Unable to update push notifications.");
+    } finally {
+      setPushBusy(false);
     }
   };
 
@@ -148,6 +207,20 @@ export default function Dashboard() {
               type="button"
               aria-label="Toggle performer link status"
               aria-pressed={!isActive}
+            >
+              <span className="link-switch-knob" />
+            </button>
+          </div>
+
+          <div className="link-toggle-row">
+            <span className="link-toggle-title">Push notifications</span>
+            <button
+              className={`link-switch ${notificationsEnabled ? "on" : "off"}`}
+              onClick={togglePushNotifications}
+              disabled={pushBusy}
+              type="button"
+              aria-label="Toggle push notifications"
+              aria-pressed={notificationsEnabled}
             >
               <span className="link-switch-knob" />
             </button>
