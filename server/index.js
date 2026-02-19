@@ -100,6 +100,12 @@ async function verifyAdminRequester(req) {
   }
 }
 
+async function verifyAuthenticatedRequester(req) {
+  const token = parseBearerToken(req);
+  const decoded = await auth.verifyIdToken(token);
+  return decoded.uid;
+}
+
 async function deleteQueryBatch(baseQuery, batchSize = 500) {
   while (true) {
     const snap = await baseQuery.limit(batchSize).get();
@@ -270,6 +276,73 @@ app.post("/push-search", async (req, res, next) => {
     res.json({ success: true });
   } catch (error) {
     console.error("PUSH SEARCH ERROR:", error);
+    next(error);
+  }
+});
+
+// ---------- PUSH SETTINGS ----------
+app.post("/push-settings", async (req, res, next) => {
+  try {
+    const uid = await verifyAuthenticatedRequester(req);
+    const { enabled, fcmToken } = req.body;
+
+    if (typeof enabled !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "enabled must be a boolean",
+      });
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    await userRef.set({ notificationsEnabled: enabled }, { merge: true });
+
+    if (fcmToken) {
+      const tokenRef = db.collection("devices").doc(uid).collection("tokens").doc(fcmToken);
+      if (enabled) {
+        await tokenRef.set({ uid, createdAt: Date.now() }, { merge: true });
+      } else {
+        await tokenRef.delete();
+      }
+    }
+
+    res.json({ success: true, notificationsEnabled: enabled });
+  } catch (error) {
+    console.error("PUSH SETTINGS ERROR:", error);
+    next(error);
+  }
+});
+
+// ---------- PERFORMER LINK STATUS ----------
+app.post("/performer-link-status", async (req, res, next) => {
+  try {
+    const uid = await verifyAuthenticatedRequester(req);
+    const { enabled } = req.body;
+
+    if (typeof enabled !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "enabled must be a boolean",
+      });
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const slug = userSnap.data()?.slug || null;
+    await userRef.set({ isActive: enabled }, { merge: true });
+    if (slug) {
+      await syncPublicPerformer(slug, enabled);
+    }
+
+    res.json({ success: true, isActive: enabled });
+  } catch (error) {
+    console.error("PERFORMER LINK STATUS ERROR:", error);
     next(error);
   }
 });
@@ -497,6 +570,56 @@ app.delete("/admin-delete-user/:uid", async (req, res, next) => {
     res.json({ success: true });
   } catch (error) {
     console.error("ADMIN DELETE USER ERROR:", error);
+    next(error);
+  }
+});
+
+// ---------- ADMIN SET USER STATUS ----------
+app.post("/admin-set-user-status/:uid", async (req, res, next) => {
+  try {
+    await verifyAdminRequester(req);
+
+    const { uid } = req.params;
+    const { enabled } = req.body;
+    if (!uid || typeof enabled !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "Missing uid or invalid enabled value",
+      });
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const currentSessionVersion = Number(userSnap.data()?.sessionVersion ?? 1);
+    const nextSessionVersion = enabled ? 1 : currentSessionVersion + 1;
+    const slug = userSnap.data()?.slug || null;
+
+    await userRef.set(
+      {
+        isActive: enabled,
+        sessionVersion: nextSessionVersion,
+      },
+      { merge: true },
+    );
+
+    if (slug) {
+      await syncPublicPerformer(slug, enabled);
+    }
+
+    res.json({
+      success: true,
+      isActive: enabled,
+      sessionVersion: nextSessionVersion,
+    });
+  } catch (error) {
+    console.error("ADMIN SET USER STATUS ERROR:", error);
     next(error);
   }
 });

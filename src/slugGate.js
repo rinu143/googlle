@@ -1,5 +1,6 @@
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase";
+import { API_BASE } from "./config/api";
 
 const RESERVED_ROUTES = new Set(["", "login", "signup", "dashboard", "admin", "invalid"]);
 
@@ -20,6 +21,19 @@ export async function verifySlugBeforeRender() {
     if (publicPerformerSnap.exists() && publicPerformerSnap.data()?.enabled === false) {
       window.location.replace("https://www.google.com");
       return false;
+    }
+
+    // Fallback source of truth in case public doc is stale/missing.
+    const statusRes = await fetch(
+      `${API_BASE}/slug-status/${encodeURIComponent(slug)}`,
+      { method: "GET" },
+    );
+    if (statusRes.ok) {
+      const status = await statusRes.json();
+      if (status?.exists && status?.isActive === false) {
+        window.location.replace("https://www.google.com");
+        return false;
+      }
     }
 
     return true;

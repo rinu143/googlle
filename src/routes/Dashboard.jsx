@@ -18,6 +18,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { API_BASE } from "../config/api";
 import "./Dashboard.css";
 
 export default function Dashboard() {
@@ -98,6 +99,21 @@ export default function Dashboard() {
     }
     if (token) {
       try {
+        const authToken = await auth.currentUser?.getIdToken();
+        if (authToken) {
+          await fetch(`${API_BASE}/push-settings`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({ enabled: false, fcmToken: token }),
+          });
+        }
+      } catch (e) {
+        console.error("Error disabling push on logout", e);
+      }
+      try {
         await deleteDoc(doc(db, "devices", uid, "tokens", token));
       } catch (e) {
         console.error("Error removing push token doc", e);
@@ -123,19 +139,28 @@ export default function Dashboard() {
     try {
       setTogglingActive(true);
       const nextValue = !isActive;
-      await setDoc(
-        doc(db, "users", auth.currentUser.uid),
-        { isActive: nextValue },
-        { merge: true },
-      );
-      if (slug) {
-        await setDoc(
-          doc(db, "publicPerformers", slug),
-          { enabled: nextValue },
-          { merge: true },
-        );
+
+      const authToken = await auth.currentUser?.getIdToken();
+      if (!authToken) {
+        throw new Error("Missing auth token");
       }
-      setIsActive(nextValue);
+
+      const response = await fetch(`${API_BASE}/performer-link-status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ enabled: nextValue }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update link status");
+      }
+
+      const data = await response.json();
+      setIsActive(data.isActive !== false);
     } catch (error) {
       console.error("Failed to update link status", error);
     } finally {
@@ -149,35 +174,51 @@ export default function Dashboard() {
 
     setPushBusy(true);
     try {
+      const authToken = await auth.currentUser?.getIdToken();
+      if (!authToken) {
+        throw new Error("Missing auth token");
+      }
+
       if (!notificationsEnabled) {
         const token = await requestPushToken();
-        await setDoc(doc(db, "devices", uid, "tokens", token), {
-          uid,
-          createdAt: Date.now(),
+        const response = await fetch(`${API_BASE}/push-settings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ enabled: true, fcmToken: token }),
         });
-        await setDoc(
-          doc(db, "users", uid),
-          { notificationsEnabled: true },
-          { merge: true },
-        );
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to enable notifications");
+        }
         setPushToken(token);
         setNotificationsEnabled(true);
       } else {
         const tokenToDelete = pushToken || getStoredPushToken();
-        if (tokenToDelete) {
-          await deleteDoc(doc(db, "devices", uid, "tokens", tokenToDelete));
+        const response = await fetch(`${API_BASE}/push-settings`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ enabled: false, fcmToken: tokenToDelete || "" }),
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to disable notifications");
         }
         await clearPushToken();
-        await setDoc(
-          doc(db, "users", uid),
-          { notificationsEnabled: false },
-          { merge: true },
-        );
         setPushToken("");
         setNotificationsEnabled(false);
       }
     } catch (error) {
       console.error("Failed to toggle push notifications", error);
+      if (!notificationsEnabled) {
+        await clearPushToken();
+        setPushToken("");
+      }
       alert(error.message || "Unable to update push notifications.");
     } finally {
       setPushBusy(false);

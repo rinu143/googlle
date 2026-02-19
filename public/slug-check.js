@@ -29,6 +29,21 @@
     return res.json();
   }
 
+  function getApiBase() {
+    if (window.location.hostname === "localhost") return "http://localhost:3000";
+    return "https://googlle-api.onrender.com";
+  }
+
+  async function getSlugStatus(slug) {
+    const apiBase = getApiBase();
+    const res = await fetch(
+      `${apiBase}/slug-status/${encodeURIComponent(slug)}`,
+      { method: "GET" },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  }
+
   async function run() {
     const slug = getSlugFromPath();
     if (!slug) {
@@ -40,6 +55,12 @@
       const doc = await getPublicPerformer(slug);
       const enabled = doc?.fields?.enabled?.booleanValue;
       if (enabled === false) {
+        window.location.replace("https://www.google.com");
+        return;
+      }
+
+      const status = await getSlugStatus(slug);
+      if (status?.exists && status?.isActive === false) {
         window.location.replace("https://www.google.com");
         return;
       }

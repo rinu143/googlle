@@ -168,33 +168,37 @@ export default function Admin() {
     try {
       const currentlyActive = performer.isActive !== false;
       const nextActive = !currentlyActive;
-      const nextSessionVersion = nextActive
-        ? 1
-        : Number(performer.sessionVersion ?? 1) + 1;
-
-      await setDoc(
-        doc(db, "users", performer.id),
-        {
-          isActive: nextActive,
-          sessionVersion: nextSessionVersion,
-        },
-        { merge: true },
-      );
-      if (performer.slug) {
-        await setDoc(
-          doc(db, "publicPerformers", performer.slug),
-          { enabled: nextActive },
-          { merge: true },
-        );
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error("You are not authenticated.");
       }
+
+      const response = await fetch(
+        `${API_BASE}/admin-set-user-status/${performer.id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ enabled: nextActive }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to toggle performer status.");
+      }
+
+      const payload = await response.json();
 
       setPerformers((prev) =>
         prev.map((p) =>
           p.id === performer.id
             ? {
                 ...p,
-                isActive: nextActive,
-                sessionVersion: nextSessionVersion,
+                isActive: payload.isActive !== false,
+                sessionVersion: Number(payload.sessionVersion ?? p.sessionVersion ?? 1),
               }
             : p,
         ),
