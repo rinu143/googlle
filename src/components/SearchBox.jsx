@@ -132,15 +132,7 @@ export default function SearchBox({ slug }) {
           alt="Google"
           className="google-logo"
         />
-        <form
-          onSubmit={submit}
-          style={{
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}
-        >
+        <form onSubmit={submit} className="google-search-form">
           <div className="google-search-bar">
             <div className="search-icon-wrapper">
               <svg
@@ -157,6 +149,7 @@ export default function SearchBox({ slug }) {
             <input
               autoFocus
               className="google-input"
+              aria-label="Search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />

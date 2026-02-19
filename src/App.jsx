@@ -4,6 +4,7 @@ import Signup from "./routes/Signup";
 import Dashboard from "./routes/Dashboard";
 import Audience from "./routes/Audience";
 import Admin from "./routes/Admin";
+import AdminPerformerDetail from "./routes/AdminPerformerDetail";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
@@ -32,6 +33,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Admin />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/performer/:uid"
+        element={
+          <ProtectedRoute>
+            <AdminPerformerDetail />
           </ProtectedRoute>
         }
       />

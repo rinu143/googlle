@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { sendPasswordResetEmail, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import {
   collection,
   getDocs,
@@ -11,6 +11,7 @@ import {
 import { auth, db } from "../firebase";
 import { getDeviceId } from "../services/deviceService";
 import { API_BASE } from "../config/api";
+import { useNavigate } from "react-router-dom";
 import "./Admin.css";
 
 export default function Admin() {
@@ -21,6 +22,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [signupPrice, setSignupPrice] = useState("");
   const [savingPrice, setSavingPrice] = useState(false);
+  const nav = useNavigate();
 
   const loadPerformers = async () => {
     const [usersSnap, slugsSnap] = await Promise.all([
@@ -46,6 +48,11 @@ export default function Admin() {
           slug: d.data().slug || slugByUid[d.id] || "",
         });
       }
+    });
+    list.sort((a, b) => {
+      const nameA = (a.username || a.email || "").toLowerCase();
+      const nameB = (b.username || b.email || "").toLowerCase();
+      return nameA.localeCompare(nameB);
     });
     setPerformers(list);
   };
@@ -124,88 +131,6 @@ export default function Admin() {
       alert(`Error: ${error.message}`);
     } finally {
       setSavingPrice(false);
-    }
-  };
-
-  const remove = async (id) => {
-    if (!confirm("Are you sure you want to delete this performer?")) return;
-
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) {
-        throw new Error("You are not authenticated.");
-      }
-
-      const response = await fetch(`${API_BASE}/admin-delete-user/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to delete performer.");
-      }
-
-      setPerformers((prev) => prev.filter((p) => p.id !== id));
-    } catch (error) {
-      console.error(error);
-      alert(`Error: ${error.message}`);
-    }
-  };
-
-  const resetPassword = async (performerEmail) => {
-    try {
-      await sendPasswordResetEmail(auth, performerEmail);
-      alert(`Password reset email sent to ${performerEmail}`);
-    } catch (e) {
-      alert(e.message);
-    }
-  };
-
-  const togglePerformerStatus = async (performer) => {
-    try {
-      const currentlyActive = performer.isActive !== false;
-      const nextActive = !currentlyActive;
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) {
-        throw new Error("You are not authenticated.");
-      }
-
-      const response = await fetch(
-        `${API_BASE}/admin-set-user-status/${performer.id}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ enabled: nextActive }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to toggle performer status.");
-      }
-
-      const payload = await response.json();
-
-      setPerformers((prev) =>
-        prev.map((p) =>
-          p.id === performer.id
-            ? {
-                ...p,
-                isActive: payload.isActive !== false,
-                sessionVersion: Number(payload.sessionVersion ?? p.sessionVersion ?? 1),
-              }
-            : p,
-        ),
-      );
-    } catch (error) {
-      console.error(error);
-      alert(`Error: ${error.message}`);
     }
   };
 
@@ -304,66 +229,24 @@ export default function Admin() {
                 Performers ({performers.length})
               </h3>
             </div>
-            <div className="performer-list">
-              {performers.length === 0 ? (
-                <p style={{ color: "#6b7280", textAlign: "center" }}>
-                  No performers found.
-                </p>
-              ) : (
-                performers.map((p) => (
-                  <div key={p.id} className="performer-item">
-                    <div className="performer-info">
-                      <span className="performer-email">{p.username || (p.email || "").split("@")[0]}</span>
-                      <span className="performer-email">{p.email}</span>
-                      <span className="performer-phone">
-                        {p.phone || "No phone"}
-                      </span>
-                      <span className="performer-phone">
-                        Source: {p.createdBy === "admin" ? "Admin" : "Paid"}
-                      </span>
-                      <span className="performer-phone">
-                        Status: {p.isActive === false ? "Disabled" : "Active"}
-                      </span>
-                      {p.slug ? (
-                        <a
-                          href={`/${p.slug}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="performer-link"
-                        >
-                          {window.location.origin}/{p.slug} 
-                        </a>
-                      ) : (
-                        <span className="performer-link">Slug missing</span>
-                      )}
-                    </div>
-                    <div className="performer-actions">
-                      <button
-                        className="btn-secondary"
-                        onClick={() => resetPassword(p.email)}
-                        title="Send Reset Password Email"
-                      >
-                        Reset
-                      </button>
-                      <button
-                        className="btn-secondary"
-                        onClick={() => togglePerformerStatus(p)}
-                        title="Toggle account status"
-                      >
-                        {p.isActive === false ? "Activate" : "Disable"}
-                      </button>
-                      <button
-                        className="btn-danger"
-                        onClick={() => remove(p.id)}
-                        title="Delete User"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            {performers.length === 0 ? (
+              <p style={{ color: "#6b7280", textAlign: "center" }}>
+                No performers found.
+              </p>
+            ) : (
+              <div className="performer-contact-list">
+                {performers.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="performer-contact"
+                    onClick={() => nav(`/admin/performer/${p.id}`)}
+                  >
+                    {p.username || (p.email || "").split("@")[0]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </main>
