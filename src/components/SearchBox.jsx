@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "../firebase";
+import { saveSearchIfActive } from "../services/searchService";
 import "./SearchBox.css";
 
 export default function SearchBox({ slug }) {
@@ -53,11 +52,7 @@ export default function SearchBox({ slug }) {
     if (!q.trim()) return;
 
     // save search
-    await addDoc(collection(db, "searches"), {
-      slug,
-      word: q,
-      time: serverTimestamp(),
-    });
+    await saveSearchIfActive(slug, q);
 
     // redirect to real google
     window.location.href =
@@ -66,11 +61,7 @@ export default function SearchBox({ slug }) {
 
   const handleTrendClick = (trend) => {
     setQ(trend);
-    addDoc(collection(db, "searches"), {
-      slug,
-      word: trend,
-      time: serverTimestamp(),
-    });
+    saveSearchIfActive(slug, trend);
     window.location.href =
       "https://www.google.com/search?q=" + encodeURIComponent(trend);
   };

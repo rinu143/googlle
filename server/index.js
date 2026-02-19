@@ -156,6 +156,40 @@ app.post("/create-order", async (req, res, next) => {
   }
 });
 
+// ---------- PUBLIC SLUG STATUS ----------
+app.get("/slug-status/:slug", async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    if (!slug) {
+      return res.status(400).json({
+        error: "Missing slug",
+        message: "Missing slug",
+      });
+    }
+
+    const slugSnap = await db.collection("slugs").doc(slug).get();
+    if (!slugSnap.exists) {
+      return res.json({ exists: false, isActive: false });
+    }
+
+    const uid = slugSnap.data()?.uid;
+    if (!uid) {
+      return res.json({ exists: false, isActive: false });
+    }
+
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) {
+      return res.json({ exists: false, isActive: false });
+    }
+
+    const isActive = userSnap.data()?.isActive !== false;
+    res.json({ exists: true, uid, isActive });
+  } catch (error) {
+    console.error("SLUG STATUS ERROR:", error);
+    next(error);
+  }
+});
+
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res, next) => {
   try {
@@ -216,6 +250,7 @@ app.post("/verify-payment", async (req, res, next) => {
       phone,
       username: normalizedUsername,
       createdBy: "self",
+      isActive: true,
       slug,
       role: "performer",
       createdAt: FieldValue.serverTimestamp(),
@@ -264,6 +299,7 @@ app.post("/admin-create-user", async (req, res, next) => {
       phone,
       username: normalizedUsername,
       createdBy: "admin",
+      isActive: true,
       slug,
       role: "performer",
       createdAt: FieldValue.serverTimestamp(),

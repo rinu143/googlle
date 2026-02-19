@@ -10,6 +10,16 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      window.__startReactApp = function () {
+        if (window.__reactStarted) return;
+        window.__reactStarted = true;
+        const script = document.createElement("script");
+        script.type = "module";
+        script.src = "/src/main.jsx";
+        document.body.appendChild(script);
+      };
+    </script>
+    <script src="/slug-check.js"></script>
   </body>
 </html>

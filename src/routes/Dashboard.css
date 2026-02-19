@@ -70,6 +70,68 @@
   margin-top: 0.5rem;
 }
 
+.link-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.link-toggle-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #cbd5e1;
+}
+
+.link-switch {
+  width: 52px;
+  height: 30px;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.link-switch.on {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: #dc2626;
+}
+
+.link-switch.off {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.link-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ffffff;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.link-switch.on .link-switch-knob {
+  transform: translateX(22px);
+}
+
+.link-switch:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .header-link-url {
   font-family: "Consolas", "Monaco", monospace;
   font-size: 0.9rem;

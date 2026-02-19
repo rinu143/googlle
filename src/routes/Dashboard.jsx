@@ -22,21 +22,23 @@ export default function Dashboard() {
   const [username, setUsername] = useState(
     (auth.currentUser?.email || "").split("@")[0] || "Performer",
   );
+  const [isActive, setIsActive] = useState(true);
+  const [togglingActive, setTogglingActive] = useState(false);
 
   useEffect(() => {
     let unsubscribe = () => {};
 
     const load = async () => {
-      // get performer profile
       const userRef = doc(db, "users", auth.currentUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const profile = userSnap.data();
-        const fallbackUsername = (auth.currentUser?.email || "").split("@")[0] || "Performer";
+        const fallbackUsername =
+          (auth.currentUser?.email || "").split("@")[0] || "Performer";
         setUsername(profile.username || fallbackUsername);
-        let userSlug = userSnap.data().slug;
+        setIsActive(profile.isActive !== false);
+        let userSlug = profile.slug;
 
-        // Backward compatibility: older users may not have slug on users/{uid}.
         if (!userSlug) {
           const slugSnap = await getDocs(
             query(
@@ -57,7 +59,6 @@ export default function Dashboard() {
         if (!userSlug) return;
         setSlug(userSlug);
 
-        // listen to ALL searches for this performer
         const q = query(
           collection(db, "searches"),
           where("slug", "==", userSlug),
@@ -80,7 +81,6 @@ export default function Dashboard() {
     const uid = auth.currentUser.uid;
     const deviceId = getDeviceId();
 
-    // remove this device session
     try {
       await deleteDoc(doc(db, "sessions", uid, "devices", deviceId));
     } catch (e) {
@@ -100,11 +100,28 @@ export default function Dashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const togglePerformerLink = async () => {
+    try {
+      setTogglingActive(false);
+      const nextValue = !isActive;
+      await setDoc(
+        doc(db, "users", auth.currentUser.uid),
+        { isActive: nextValue },
+        { merge: true },
+      );
+      setIsActive(nextValue);
+    } catch (error) {
+      console.error("Failed to update link status", error);
+    } finally {
+      setTogglingActive(false);
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div>
-          <h1 className="dashboard-title">  {username || "Performer"}</h1>
+          <h1 className="dashboard-title">{username || "Performer"}</h1>
           <p className="dashboard-email">{auth.currentUser?.email}</p>
 
           <div className="header-link-row">
@@ -117,16 +134,30 @@ export default function Dashboard() {
               disabled={!slug}
               title="Copy Link"
             >
-              {copied ? "✓" : "Copy"}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+
+          <div className="link-toggle-row">
+            <span className="link-toggle-title">Lock link</span>
+            <button
+              className={`link-switch ${!isActive ? "on" : "off"}`}
+              onClick={togglePerformerLink}
+              disabled={togglingActive}
+              type="button"
+              aria-label="Toggle performer link status"
+              aria-pressed={!isActive}
+            >
+              <span className="link-switch-knob" />
             </button>
           </div>
         </div>
+
         <button onClick={logout} className="logout-btn">
           Sign Out
         </button>
       </header>
 
-      {/* History Section (Live Feed) - Prioritized */}
       <section className="history-section" style={{ marginBottom: "3rem" }}>
         <h2 className="history-title">Peak</h2>
 
@@ -135,10 +166,7 @@ export default function Dashboard() {
             <div className="empty-state">Waiting for the first thought...</div>
           ) : (
             searches.map((s, i) => (
-              <div
-                key={s.id}
-                className={`history-item ${i === 0 ? "latest" : ""}`}
-              >
+              <div key={s.id} className={`history-item ${i === 0 ? "latest" : ""}`}>
                 <div className="search-term">{s.word}</div>
                 {i === 0 && <div className="latest-badge">New</div>}
               </div>
