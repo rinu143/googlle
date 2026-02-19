@@ -184,6 +184,23 @@ export default function Dashboard() {
     }
   };
 
+  const formatSearchDateTime = (value) => {
+    if (!value) return "--";
+    let dateObj = null;
+
+    if (typeof value?.toDate === "function") {
+      dateObj = value.toDate();
+    } else if (value?.seconds) {
+      dateObj = new Date(value.seconds * 1000);
+    } else {
+      dateObj = new Date(value);
+    }
+
+    if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return "--";
+
+    return dateObj.toLocaleString();
+  };
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -249,7 +266,10 @@ export default function Dashboard() {
             searches.map((s, i) => (
               <div key={s.id} className={`history-item ${i === 0 ? "latest" : ""}`}>
                 <div className="search-term">{s.word}</div>
-                {i === 0 && <div className="latest-badge">New</div>}
+                <div className="history-item-meta">
+                  <div className="search-time">{formatSearchDateTime(s.time)}</div>
+                  {i === 0 && <div className="latest-badge">New</div>}
+                </div>
               </div>
             ))
           )}

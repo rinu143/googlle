@@ -330,6 +330,18 @@
   color: var(--text-muted);
 }
 
+.history-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.search-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.9;
+}
+
 .latest-badge {
   background-color: rgba(16, 185, 129, 0.15);
   color: #10b981;
