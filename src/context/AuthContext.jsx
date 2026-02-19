@@ -15,12 +15,18 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubscribeSession = null;
+    let sessionInterval = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
         setLoading(false);
+        localStorage.removeItem("sessionVersion");
         if (unsubscribeSession) unsubscribeSession();
+        if (sessionInterval) {
+          clearInterval(sessionInterval);
+          sessionInterval = null;
+        }
         return;
       }
 
@@ -33,6 +39,27 @@ export function AuthProvider({ children }) {
 
         if (userSnap.exists()) {
           const role = userSnap.data().role;
+
+          if (sessionInterval) {
+            clearInterval(sessionInterval);
+          }
+          sessionInterval = setInterval(async () => {
+            try {
+              const latestSnap = await getDoc(userRef);
+              if (!latestSnap.exists()) return;
+
+              const remoteVersion = Number(latestSnap.data()?.sessionVersion ?? 1);
+              const localVersion = Number(
+                localStorage.getItem("sessionVersion") ?? 1,
+              );
+
+              if (remoteVersion !== localVersion) {
+                await signOut(auth);
+              }
+            } catch (e) {
+              console.error("Session version check failed", e);
+            }
+          }, 10000);
 
           // ONLY performers should have device enforcement
           if (role === "performer") {
@@ -73,6 +100,7 @@ export function AuthProvider({ children }) {
     return () => {
       unsubscribeAuth();
       if (unsubscribeSession) unsubscribeSession();
+      if (sessionInterval) clearInterval(sessionInterval);
     };
   }, []);
 

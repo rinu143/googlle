@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useNavigate } from "react-router-dom";
 import {
@@ -42,7 +42,19 @@ export default function Login() {
 
       // read role first
       const userSnap = await getDoc(doc(db, "users", uid));
-      const role = userSnap.data()?.role;
+      const userData = userSnap.data() || {};
+      const role = userData.role;
+      const isActive = userData.isActive !== false;
+      const sessionVersion = Number(userData.sessionVersion ?? 1);
+
+      if (!isActive) {
+        await signOut(auth);
+        setError("This account is disabled.");
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("sessionVersion", String(sessionVersion));
 
       // ADMIN → skip device limit
       if (role === "admin") {

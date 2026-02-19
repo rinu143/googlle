@@ -88,6 +88,7 @@ export default function Dashboard() {
     }
 
     await signOut(auth);
+    localStorage.removeItem("sessionVersion");
     localStorage.removeItem("savedEmail");
     localStorage.removeItem("savedPassword");
     window.location.href = "/login";

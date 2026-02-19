@@ -164,6 +164,40 @@ export default function Admin() {
     }
   };
 
+  const togglePerformerStatus = async (performer) => {
+    try {
+      const currentlyActive = performer.isActive !== false;
+      const nextActive = !currentlyActive;
+      const nextSessionVersion = nextActive
+        ? 1
+        : Number(performer.sessionVersion ?? 1) + 1;
+
+      await setDoc(
+        doc(db, "users", performer.id),
+        {
+          isActive: nextActive,
+          sessionVersion: nextSessionVersion,
+        },
+        { merge: true },
+      );
+
+      setPerformers((prev) =>
+        prev.map((p) =>
+          p.id === performer.id
+            ? {
+                ...p,
+                isActive: nextActive,
+                sessionVersion: nextSessionVersion,
+              }
+            : p,
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
   const logout = async () => {
     const uid = auth.currentUser?.uid;
     const deviceId = getDeviceId();
@@ -177,6 +211,7 @@ export default function Admin() {
     }
 
     await signOut(auth);
+    localStorage.removeItem("sessionVersion");
     localStorage.removeItem("savedEmail");
     localStorage.removeItem("savedPassword");
     window.location.href = "/login";
@@ -275,6 +310,9 @@ export default function Admin() {
                       <span className="performer-phone">
                         Source: {p.createdBy === "admin" ? "Admin" : "Paid"}
                       </span>
+                      <span className="performer-phone">
+                        Status: {p.isActive === false ? "Disabled" : "Active"}
+                      </span>
                       {p.slug ? (
                         <a
                           href={`/${p.slug}`}
@@ -295,6 +333,13 @@ export default function Admin() {
                         title="Send Reset Password Email"
                       >
                         Reset
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        onClick={() => togglePerformerStatus(p)}
+                        title="Toggle account status"
+                      >
+                        {p.isActive === false ? "Activate" : "Disable"}
                       </button>
                       <button
                         className="btn-danger"
