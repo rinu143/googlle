@@ -171,13 +171,13 @@
 
 .performer-link {
   font-size: 0.875rem;
-  color: #737373;
+  color: #2600fb;
   text-decoration: none;
 }
 
 .performer-link:hover {
   text-decoration: underline;
-  color: #000000;
+  color: #0062eb;
 }
 
 .performer-actions {

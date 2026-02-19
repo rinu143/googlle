@@ -19,6 +19,9 @@ export default function Dashboard() {
   const [slug, setSlug] = useState(null);
   const [searches, setSearches] = useState([]);
   const [copied, setCopied] = useState(false);
+  const [username, setUsername] = useState(
+    (auth.currentUser?.email || "").split("@")[0] || "Performer",
+  );
 
   useEffect(() => {
     let unsubscribe = () => {};
@@ -28,6 +31,9 @@ export default function Dashboard() {
       const userRef = doc(db, "users", auth.currentUser.uid);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
+        const profile = userSnap.data();
+        const fallbackUsername = (auth.currentUser?.email || "").split("@")[0] || "Performer";
+        setUsername(profile.username || fallbackUsername);
         let userSlug = userSnap.data().slug;
 
         // Backward compatibility: older users may not have slug on users/{uid}.
@@ -98,7 +104,7 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div>
-          <h1 className="dashboard-title">Googlle</h1>
+          <h1 className="dashboard-title">  {username || "Performer"}</h1>
           <p className="dashboard-email">{auth.currentUser?.email}</p>
 
           <div className="header-link-row">

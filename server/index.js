@@ -48,6 +48,10 @@ function generatePassword(email, phone) {
   return part1 + part2 + random;
 }
 
+function getEmailPrefix(email) {
+  return (email || "").split("@")[0] || "user";
+}
+
 async function generateUniqueSlug(email) {
   const localPart = (email || "").split("@")[0] || "";
   const cleaned = localPart.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -155,9 +159,9 @@ app.post("/create-order", async (req, res, next) => {
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, email, phone } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, email, phone, username } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !email || !phone) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !email || !phone || !username) {
       return res.status(400).json({
         error: "Missing required fields",
         message: "Missing required fields",
@@ -195,6 +199,7 @@ app.post("/verify-payment", async (req, res, next) => {
 
     const password = generatePassword(email, phone);
     const slug = await generateUniqueSlug(email);
+    const normalizedUsername = (username || "").trim() || getEmailPrefix(email);
 
     // create auth user
     const userRecord = await auth.createUser({
@@ -209,6 +214,8 @@ app.post("/verify-payment", async (req, res, next) => {
     await db.collection("users").doc(userRecord.uid).set({
       email,
       phone,
+      username: normalizedUsername,
+      createdBy: "self",
       slug,
       role: "performer",
       createdAt: FieldValue.serverTimestamp(),
@@ -232,10 +239,17 @@ app.post("/verify-payment", async (req, res, next) => {
 // ---------- ADMIN CREATE USER ----------
 app.post("/admin-create-user", async (req, res, next) => {
   try {
-    const { email, phone } = req.body;
+    const { email, phone, username } = req.body;
+    if (!email || !phone || !username) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        message: "Missing required fields",
+      });
+    }
 
     const password = generatePassword(email, phone);
     const slug = await generateUniqueSlug(email);
+    const normalizedUsername = (username || "").trim() || getEmailPrefix(email);
 
     const userRecord = await auth.createUser({
       email,
@@ -248,6 +262,8 @@ app.post("/admin-create-user", async (req, res, next) => {
     await db.collection("users").doc(userRecord.uid).set({
       email,
       phone,
+      username: normalizedUsername,
+      createdBy: "admin",
       slug,
       role: "performer",
       createdAt: FieldValue.serverTimestamp(),

@@ -14,6 +14,7 @@ import { API_BASE } from "../config/api";
 import "./Admin.css";
 
 export default function Admin() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [performers, setPerformers] = useState([]);
@@ -36,9 +37,12 @@ export default function Admin() {
     const list = [];
     usersSnap.forEach((d) => {
       if (d.data().role === "performer") {
+        const performerEmail = d.data().email || "";
+        const fallbackUsername = performerEmail.split("@")[0] || "user";
         list.push({
           id: d.id,
           ...d.data(),
+          username: d.data().username || fallbackUsername,
           slug: d.data().slug || slugByUid[d.id] || "",
         });
       }
@@ -61,9 +65,10 @@ export default function Admin() {
   const create = async () => {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPhone = phone.trim();
+    const normalizedUsername = username.trim();
 
-    if (!normalizedEmail || !/^\d{10}$/.test(normalizedPhone)) {
-      alert("Enter valid email and 10 digit phone number.");
+    if (!normalizedUsername || !normalizedEmail || !/^\d{10}$/.test(normalizedPhone)) {
+      alert("Enter username, valid email and 10 digit phone number.");
       return;
     }
 
@@ -75,6 +80,7 @@ export default function Admin() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          username: normalizedUsername,
           email: normalizedEmail,
           phone: normalizedPhone,
         }),
@@ -86,6 +92,7 @@ export default function Admin() {
       }
 
       alert("Performer created successfully. Credentials sent by email.");
+      setUsername("");
       setEmail("");
       setPhone("");
       loadPerformers();
@@ -198,6 +205,12 @@ export default function Admin() {
             <div className="admin-form">
               <input
                 className="admin-input"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <input
+                className="admin-input"
                 placeholder="Email Address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -254,9 +267,13 @@ export default function Admin() {
                 performers.map((p) => (
                   <div key={p.id} className="performer-item">
                     <div className="performer-info">
+                      <span className="performer-email">{p.username || (p.email || "").split("@")[0]}</span>
                       <span className="performer-email">{p.email}</span>
                       <span className="performer-phone">
                         {p.phone || "No phone"}
+                      </span>
+                      <span className="performer-phone">
+                        Source: {p.createdBy === "admin" ? "Admin" : "Paid"}
                       </span>
                       {p.slug ? (
                         <a
@@ -265,7 +282,7 @@ export default function Admin() {
                           rel="noreferrer"
                           className="performer-link"
                         >
-                          {window.location.origin}/{p.slug} -&gt;
+                          {window.location.origin}/{p.slug} 
                         </a>
                       ) : (
                         <span className="performer-link">Slug missing</span>

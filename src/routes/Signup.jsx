@@ -4,6 +4,7 @@ import "./Signup.css";
 import { API_BASE } from "../config/api";
 
 export default function Signup() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,12 @@ export default function Signup() {
 
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPhone = phone.trim();
+    const normalizedUsername = username.trim();
+
+    if (!normalizedUsername) {
+      setError("Username is required.");
+      return;
+    }
 
     if (!/^\d{10}$/.test(normalizedPhone)) {
       setError("Phone number must be exactly 10 digits.");
@@ -93,6 +100,7 @@ export default function Signup() {
                   razorpay_signature: response.razorpay_signature,
                   email: normalizedEmail,
                   phone: normalizedPhone,
+                  username: normalizedUsername,
                 }),
               },
             );
@@ -109,6 +117,7 @@ export default function Signup() {
             await verifyRes.json();
 
             setSuccess("Account created. Check your email.");
+            setUsername("");
             setEmail("");
             setPhone("");
           } catch (verifyError) {
@@ -144,6 +153,18 @@ export default function Signup() {
         {success && <div className="signup-success">{success}</div>}
 
         <form onSubmit={onSubmit} className="login-form">
+          <div className="login-input-group">
+            <label className="login-label">Username</label>
+            <input
+              className="login-input"
+              type="text"
+              placeholder="Your display name"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+
           <div className="login-input-group">
             <label className="login-label">Email</label>
             <input
