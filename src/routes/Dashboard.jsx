@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { deleteDoc, doc } from "firebase/firestore";
 import { getDeviceId } from "../services/deviceService";
+import { useAuth } from "../context/AuthContext";
 import {
   clearPushToken,
   getStoredPushToken,
   requestPushToken,
 } from "../services/pushService";
+import { ensurePushRegistration } from "../services/ensurePushRegistration";
 import {
   getDoc,
   getDocs,
@@ -22,6 +24,7 @@ import { API_BASE } from "../config/api";
 import "./Dashboard.css";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const [slug, setSlug] = useState(null);
   const [searches, setSearches] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -75,17 +78,31 @@ export default function Dashboard() {
           orderBy("time", "desc"),
         );
 
-        unsubscribe = onSnapshot(q, (snap) => {
-          const list = [];
-          snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
-          setSearches(list);
-        });
+        unsubscribe = onSnapshot(
+          q,
+          (snap) => {
+            const list = [];
+            snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+            setSearches(list);
+          },
+          (error) => {
+            console.error(
+              "Dashboard search listener error (check indexes?):",
+              error,
+            );
+          },
+        );
       }
     };
 
     load();
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    ensurePushRegistration(user);
+  }, [user]);
 
   const logout = async () => {
     const uid = auth.currentUser.uid;
@@ -191,7 +208,9 @@ export default function Dashboard() {
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || "Failed to enable notifications");
+          throw new Error(
+            errorData.message || "Failed to enable notifications",
+          );
         }
         setPushToken(token);
         setNotificationsEnabled(true);
@@ -203,11 +222,16 @@ export default function Dashboard() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ enabled: false, fcmToken: tokenToDelete || "" }),
+          body: JSON.stringify({
+            enabled: false,
+            fcmToken: tokenToDelete || "",
+          }),
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || "Failed to disable notifications");
+          throw new Error(
+            errorData.message || "Failed to disable notifications",
+          );
         }
         await clearPushToken();
         setPushToken("");
@@ -237,7 +261,8 @@ export default function Dashboard() {
       dateObj = new Date(value);
     }
 
-    if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return "--";
+    if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime()))
+      return "--";
 
     return dateObj.toLocaleString();
   };
@@ -305,10 +330,15 @@ export default function Dashboard() {
             <div className="empty-state">Waiting for the first thought...</div>
           ) : (
             searches.map((s, i) => (
-              <div key={s.id} className={`history-item ${i === 0 ? "latest" : ""}`}>
+              <div
+                key={s.id}
+                className={`history-item ${i === 0 ? "latest" : ""}`}
+              >
                 <div className="search-term">{s.word}</div>
                 <div className="history-item-meta">
-                  <div className="search-time">{formatSearchDateTime(s.time)}</div>
+                  <div className="search-time">
+                    {formatSearchDateTime(s.time)}
+                  </div>
                   {i === 0 && <div className="latest-badge">New</div>}
                 </div>
               </div>

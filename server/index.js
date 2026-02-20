@@ -131,7 +131,10 @@ async function deleteQueryBatch(baseQuery, batchSize = 500) {
 
 async function syncPublicPerformer(slug, enabled) {
   if (!slug) return;
-  await db.collection("publicPerformers").doc(slug).set({ enabled: Boolean(enabled) });
+  await db
+    .collection("publicPerformers")
+    .doc(slug)
+    .set({ enabled: Boolean(enabled) });
 }
 
 async function sendPush(uid, word) {
@@ -307,7 +310,11 @@ app.post("/push-settings", async (req, res, next) => {
     await userRef.set({ notificationsEnabled: enabled }, { merge: true });
 
     if (fcmToken) {
-      const tokenRef = db.collection("devices").doc(uid).collection("tokens").doc(fcmToken);
+      const tokenRef = db
+        .collection("devices")
+        .doc(uid)
+        .collection("tokens")
+        .doc(fcmToken);
       if (enabled) {
         await tokenRef.set({ uid, createdAt: Date.now() }, { merge: true });
       } else {
@@ -404,9 +411,23 @@ app.post("/save-search", async (req, res, next) => {
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res, next) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, email, phone, username } = req.body;
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      email,
+      phone,
+      username,
+    } = req.body;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !email || !phone || !username) {
+    if (
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature ||
+      !email ||
+      !phone ||
+      !username
+    ) {
       return res.status(400).json({
         error: "Missing required fields",
         message: "Missing required fields",
@@ -434,7 +455,10 @@ app.post("/verify-payment", async (req, res, next) => {
       });
 
     // prevent duplicates
-    const existing = await db.collection("users").where("email", "==", email).get();
+    const existing = await db
+      .collection("users")
+      .where("email", "==", email)
+      .get();
 
     if (!existing.empty)
       return res.status(409).json({
@@ -552,7 +576,9 @@ app.delete("/admin-delete-user/:uid", async (req, res, next) => {
 
     // 1) Delete searches in batches by performer slug
     if (slug) {
-      await deleteQueryBatch(db.collection("searches").where("slug", "==", slug));
+      await deleteQueryBatch(
+        db.collection("searches").where("slug", "==", slug),
+      );
     }
 
     // 2) Delete slug document
@@ -639,4 +665,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
