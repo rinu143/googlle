@@ -116,9 +116,31 @@ async function verifyAuthenticatedRequester(req) {
   return decoded.uid;
 }
 
+async function getUserSettings(uid) {
+  const settingsSnap = await db.collection("userSettings").doc(uid).get();
+  const settings = settingsSnap.exists ? settingsSnap.data() : {};
+  return {
+    notificationsEnabled: settings?.notificationsEnabled === true,
+    linkEnabled: settings?.linkEnabled !== false,
+  };
+}
+
 async function deleteQueryBatch(baseQuery, batchSize = 500) {
   while (true) {
     const snap = await baseQuery.limit(batchSize).get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+
+    if (snap.size < batchSize) break;
+  }
+}
+
+async function deleteCollectionDocs(collectionRef, batchSize = 500) {
+  while (true) {
+    const snap = await collectionRef.limit(batchSize).get();
     if (snap.empty) break;
 
     const batch = db.batch();
@@ -134,7 +156,7 @@ async function syncPublicPerformer(slug, enabled) {
   await db
     .collection("publicPerformers")
     .doc(slug)
-    .set({ enabled: Boolean(enabled) });
+    .set({ enabled: Boolean(enabled) }, { merge: true });
 }
 
 async function sendPush(uid, word) {
@@ -142,8 +164,10 @@ async function sendPush(uid, word) {
 
   const userSnap = await db.collection("users").doc(uid).get();
   if (!userSnap.exists) return;
+  if (userSnap.data()?.enabled === false) return;
 
-  if (userSnap.data()?.notificationsEnabled !== true) return;
+  const settings = await getUserSettings(uid);
+  if (settings.notificationsEnabled !== true) return;
 
   const tokensSnap = await db
     .collection("devices")
@@ -253,21 +277,24 @@ app.get("/slug-status/:slug", async (req, res, next) => {
 
     const slugSnap = await db.collection("slugs").doc(slug).get();
     if (!slugSnap.exists) {
-      return res.json({ exists: false, isActive: false });
+      return res.json({ exists: false, enabled: false, isActive: false });
     }
 
     const uid = slugSnap.data()?.uid;
     if (!uid) {
-      return res.json({ exists: false, isActive: false });
+      return res.json({ exists: false, enabled: false, isActive: false });
     }
 
     const userSnap = await db.collection("users").doc(uid).get();
     if (!userSnap.exists) {
-      return res.json({ exists: false, isActive: false });
+      return res.json({ exists: false, enabled: false, isActive: false });
     }
 
-    const isActive = userSnap.data()?.isActive !== false;
-    res.json({ exists: true, uid, isActive });
+    const settings = await getUserSettings(uid);
+    const enabled = userSnap.data()?.enabled !== false;
+    const linkEnabled = settings.linkEnabled !== false;
+    const isActive = enabled && linkEnabled;
+    res.json({ exists: true, uid, enabled, isActive });
   } catch (error) {
     console.error("SLUG STATUS ERROR:", error);
     next(error);
@@ -306,8 +333,14 @@ app.post("/push-settings", async (req, res, next) => {
       });
     }
 
-    const userRef = db.collection("users").doc(uid);
-    await userRef.set({ notificationsEnabled: enabled }, { merge: true });
+    const userSettingsRef = db.collection("userSettings").doc(uid);
+    await userSettingsRef.set(
+      {
+        notificationsEnabled: enabled,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     if (fcmToken) {
       const tokenRef = db
@@ -352,12 +385,20 @@ app.post("/performer-link-status", async (req, res, next) => {
     }
 
     const slug = userSnap.data()?.slug || null;
-    await userRef.set({ isActive: enabled }, { merge: true });
+    const userEnabled = userSnap.data()?.enabled !== false;
+    const userSettingsRef = db.collection("userSettings").doc(uid);
+    await userSettingsRef.set(
+      {
+        linkEnabled: enabled,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
     if (slug) {
-      await syncPublicPerformer(slug, enabled);
+      await syncPublicPerformer(slug, userEnabled && enabled);
     }
 
-    res.json({ success: true, isActive: enabled });
+    res.json({ success: true, linkEnabled: enabled, isActive: enabled });
   } catch (error) {
     console.error("PERFORMER LINK STATUS ERROR:", error);
     next(error);
@@ -390,7 +431,12 @@ app.post("/save-search", async (req, res, next) => {
       return res.json({ success: true, saved: false });
     }
 
-    if (userSnap.data()?.isActive === false) {
+    if (userSnap.data()?.enabled === false) {
+      return res.json({ success: true, saved: false });
+    }
+
+    const settings = await getUserSettings(uid);
+    if (settings.linkEnabled === false) {
       return res.json({ success: true, saved: false });
     }
 
@@ -481,18 +527,29 @@ app.post("/verify-payment", async (req, res, next) => {
     const slug = await reserveUniqueSlug(userRecord.uid, email);
 
     // firestore profile
-    await db.collection("users").doc(userRecord.uid).set({
-      email,
-      phone,
-      username: normalizedUsername,
-      createdBy: "self",
-      isActive: true,
-      notificationsEnabled: false,
-      sessionVersion: 1,
-      slug,
-      role: "performer",
-      createdAt: FieldValue.serverTimestamp(),
-    });
+    await db.collection("users").doc(userRecord.uid).set(
+      {
+        email,
+        phone,
+        username: normalizedUsername,
+        createdBy: "self",
+        enabled: true,
+        sessionVersion: 1,
+        slug,
+        role: "performer",
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    await db.collection("userSettings").doc(userRecord.uid).set(
+      {
+        notificationsEnabled: false,
+        linkEnabled: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     await syncPublicPerformer(slug, true);
 
@@ -531,18 +588,29 @@ app.post("/admin-create-user", async (req, res, next) => {
 
     const slug = await reserveUniqueSlug(userRecord.uid, email);
 
-    await db.collection("users").doc(userRecord.uid).set({
-      email,
-      phone,
-      username: normalizedUsername,
-      createdBy: "admin",
-      isActive: true,
-      notificationsEnabled: false,
-      sessionVersion: 1,
-      slug,
-      role: "performer",
-      createdAt: FieldValue.serverTimestamp(),
-    });
+    await db.collection("users").doc(userRecord.uid).set(
+      {
+        email,
+        phone,
+        username: normalizedUsername,
+        createdBy: "admin",
+        enabled: true,
+        sessionVersion: 1,
+        slug,
+        role: "performer",
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    await db.collection("userSettings").doc(userRecord.uid).set(
+      {
+        notificationsEnabled: false,
+        linkEnabled: true,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     await syncPublicPerformer(slug, true);
 
@@ -571,32 +639,46 @@ app.delete("/admin-delete-user/:uid", async (req, res, next) => {
     }
 
     const userRef = db.collection("users").doc(uid);
+    const userSettingsRef = db.collection("userSettings").doc(uid);
     const userSnap = await userRef.get();
     const slug = userSnap.exists ? userSnap.data()?.slug : null;
 
-    // 1) Delete searches in batches by performer slug
-    if (slug) {
-      await deleteQueryBatch(
-        db.collection("searches").where("slug", "==", slug),
-      );
-    }
-
-    // 2) Delete slug document
-    if (slug) {
-      await db.collection("slugs").doc(slug).delete();
-      await db.collection("publicPerformers").doc(slug).delete();
-    }
-
-    // 3) Delete user document
-    await userRef.delete();
-
-    // 4) Delete auth user LAST, but handle non-existing user gracefully
+    // 1) Delete auth user first, but handle non-existing user gracefully
     try {
       await auth.deleteUser(uid);
     } catch (error) {
       if (error?.code !== "auth/user-not-found") {
         throw error;
       }
+    }
+
+    // 2) Delete users/{uid}
+    await userRef.delete();
+
+    // 3) Delete userSettings/{uid}
+    await userSettingsRef.delete();
+
+    // 4) Delete sessions/{uid}/devices/* and parent
+    await deleteCollectionDocs(db.collection("sessions").doc(uid).collection("devices"));
+    await db.collection("sessions").doc(uid).delete();
+
+    // 5) Delete devices/{uid}/tokens/* and parent
+    await deleteCollectionDocs(db.collection("devices").doc(uid).collection("tokens"));
+    await db.collection("devices").doc(uid).delete();
+
+    // 6) Delete slugs/{slug}
+    if (slug) {
+      await db.collection("slugs").doc(slug).delete();
+    }
+
+    // 7) Delete publicPerformers/{slug}
+    if (slug) {
+      await db.collection("publicPerformers").doc(slug).delete();
+    }
+
+    // 8) Delete searches where slug == user.slug
+    if (slug) {
+      await deleteQueryBatch(db.collection("searches").where("slug", "==", slug));
     }
 
     res.json({ success: true });
@@ -632,22 +714,25 @@ app.post("/admin-set-user-status/:uid", async (req, res, next) => {
     const currentSessionVersion = Number(userSnap.data()?.sessionVersion ?? 1);
     const nextSessionVersion = enabled ? 1 : currentSessionVersion + 1;
     const slug = userSnap.data()?.slug || null;
+    const settings = await getUserSettings(uid);
+    const linkEnabled = settings.linkEnabled !== false;
 
     await userRef.set(
       {
-        isActive: enabled,
+        enabled,
         sessionVersion: nextSessionVersion,
       },
       { merge: true },
     );
 
     if (slug) {
-      await syncPublicPerformer(slug, enabled);
+      await syncPublicPerformer(slug, enabled && linkEnabled);
     }
 
     res.json({
       success: true,
-      isActive: enabled,
+      isActive: enabled && linkEnabled,
+      enabled,
       sessionVersion: nextSessionVersion,
     });
   } catch (error) {

@@ -12,7 +12,6 @@ import { ensurePushRegistration } from "../services/ensurePushRegistration";
 import {
   getDoc,
   getDocs,
-  setDoc,
   collection,
   query,
   where,
@@ -48,8 +47,12 @@ export default function Dashboard() {
         const fallbackUsername =
           (auth.currentUser?.email || "").split("@")[0] || "Performer";
         setUsername(profile.username || fallbackUsername);
-        setIsActive(profile.isActive !== false);
-        setNotificationsEnabled(profile.notificationsEnabled === true);
+        setIsActive(profile.enabled !== false);
+
+        const settingsSnap = await getDoc(doc(db, "userSettings", auth.currentUser.uid));
+        const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+        setIsActive((profile.enabled !== false) && (settings.linkEnabled !== false));
+        setNotificationsEnabled(settings.notificationsEnabled === true);
         let userSlug = profile.slug;
 
         if (!userSlug) {
@@ -61,11 +64,6 @@ export default function Dashboard() {
           );
           if (!slugSnap.empty) {
             userSlug = slugSnap.docs[0].id;
-            try {
-              await setDoc(userRef, { slug: userSlug }, { merge: true });
-            } catch (e) {
-              console.error("Failed to backfill slug on user profile", e);
-            }
           }
         }
 
@@ -177,7 +175,7 @@ export default function Dashboard() {
       }
 
       const data = await response.json();
-      setIsActive(data.isActive !== false);
+      setIsActive(data.linkEnabled !== false);
     } catch (error) {
       console.error("Failed to update link status", error);
     } finally {

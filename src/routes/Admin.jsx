@@ -45,6 +45,7 @@ export default function Admin() {
           id: d.id,
           ...d.data(),
           username: d.data().username || fallbackUsername,
+          isActive: d.data().enabled !== false,
           slug: d.data().slug || slugByUid[d.id] || "",
         });
       }

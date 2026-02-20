@@ -44,7 +44,7 @@ export default function Login() {
       const userSnap = await getDoc(doc(db, "users", uid));
       const userData = userSnap.data() || {};
       const role = userData.role;
-      const isActive = userData.isActive !== false;
+      const isActive = userData.enabled !== false;
       const sessionVersion = Number(userData.sessionVersion ?? 1);
 
       if (!isActive) {

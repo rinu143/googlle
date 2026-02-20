@@ -36,6 +36,7 @@ export default function AdminPerformerDetail() {
         id: uid,
         ...data,
         slug,
+        isActive: data.enabled !== false,
         username: data.username || fallbackUsername,
       });
     } catch (error) {

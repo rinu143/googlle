@@ -14,8 +14,8 @@ export async function ensurePushRegistration(user) {
       }
     }
 
-    const userSnap = await getDoc(doc(db, "users", user.uid));
-    if (userSnap.exists() && userSnap.data()?.notificationsEnabled === false) {
+    const settingsSnap = await getDoc(doc(db, "userSettings", user.uid));
+    if (settingsSnap.exists() && settingsSnap.data()?.notificationsEnabled === false) {
       return;
     }
 
