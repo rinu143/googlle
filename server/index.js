@@ -52,7 +52,7 @@ function getEmailPrefix(email) {
   return (email || "").split("@")[0] || "user";
 }
 
-async function generateUniqueSlug(email) {
+async function reserveUniqueSlug(uid, email) {
   const localPart = (email || "").split("@")[0] || "";
   const cleaned = localPart.toLowerCase().replace(/[^a-z0-9]/g, "");
   const normalized = cleaned || "user";
@@ -60,9 +60,14 @@ async function generateUniqueSlug(email) {
   const startLength = Math.min(3, normalized.length);
   for (let length = startLength; length <= normalized.length; length++) {
     const candidate = normalized.slice(0, length);
-    const candidateSnap = await db.collection("slugs").doc(candidate).get();
-    if (!candidateSnap.exists) {
+    try {
+      await db.collection("slugs").doc(candidate).create({ uid });
       return candidate;
+    } catch (error) {
+      if (error?.code === 6 || error?.message?.includes("ALREADY_EXISTS")) {
+        continue;
+      }
+      throw error;
     }
   }
 
@@ -70,11 +75,16 @@ async function generateUniqueSlug(email) {
   let suffix = 1;
   while (true) {
     const candidate = `${base}${suffix}`;
-    const candidateSnap = await db.collection("slugs").doc(candidate).get();
-    if (!candidateSnap.exists) {
+    try {
+      await db.collection("slugs").doc(candidate).create({ uid });
       return candidate;
+    } catch (error) {
+      if (error?.code === 6 || error?.message?.includes("ALREADY_EXISTS")) {
+        suffix++;
+        continue;
+      }
+      throw error;
     }
-    suffix++;
   }
 }
 
@@ -433,7 +443,6 @@ app.post("/verify-payment", async (req, res, next) => {
       });
 
     const password = generatePassword(email, phone);
-    const slug = await generateUniqueSlug(email);
     const normalizedUsername = (username || "").trim() || getEmailPrefix(email);
 
     // create auth user
@@ -444,6 +453,8 @@ app.post("/verify-payment", async (req, res, next) => {
       emailVerified: true,
       disabled: false,
     });
+
+    const slug = await reserveUniqueSlug(userRecord.uid, email);
 
     // firestore profile
     await db.collection("users").doc(userRecord.uid).set({
@@ -459,9 +470,6 @@ app.post("/verify-payment", async (req, res, next) => {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    await db.collection("slugs").doc(slug).set({
-      uid: userRecord.uid,
-    });
     await syncPublicPerformer(slug, true);
 
     await sendWelcomeEmail(email, password, slug).catch((e) => {
@@ -487,7 +495,6 @@ app.post("/admin-create-user", async (req, res, next) => {
     }
 
     const password = generatePassword(email, phone);
-    const slug = await generateUniqueSlug(email);
     const normalizedUsername = (username || "").trim() || getEmailPrefix(email);
 
     const userRecord = await auth.createUser({
@@ -497,6 +504,8 @@ app.post("/admin-create-user", async (req, res, next) => {
       emailVerified: true,
       disabled: false,
     });
+
+    const slug = await reserveUniqueSlug(userRecord.uid, email);
 
     await db.collection("users").doc(userRecord.uid).set({
       email,
@@ -511,9 +520,6 @@ app.post("/admin-create-user", async (req, res, next) => {
       createdAt: FieldValue.serverTimestamp(),
     });
 
-    await db.collection("slugs").doc(slug).set({
-      uid: userRecord.uid,
-    });
     await syncPublicPerformer(slug, true);
 
     await sendWelcomeEmail(email, password, slug).catch((e) => {
