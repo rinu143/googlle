@@ -454,6 +454,61 @@ app.post("/save-search", async (req, res, next) => {
   }
 });
 
+// ---------- PERFORMER DASHBOARD DATA ----------
+app.get("/performer-dashboard-data", async (req, res, next) => {
+  try {
+    const uid = await verifyAuthenticatedRequester(req);
+
+    const userSnap = await db.collection("users").doc(uid).get();
+    if (!userSnap.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const userData = userSnap.data() || {};
+    let slug = userData.slug || "";
+    if (!slug) {
+      const slugSnap = await db.collection("slugs").where("uid", "==", uid).limit(1).get();
+      if (!slugSnap.empty) {
+        slug = slugSnap.docs[0].id;
+      }
+    }
+
+    const settingsSnap = await db.collection("userSettings").doc(uid).get();
+    const settings = settingsSnap.exists ? settingsSnap.data() : {};
+
+    let searches = [];
+    if (slug) {
+      const searchesSnap = await db
+        .collection("searches")
+        .where("slug", "==", slug)
+        .orderBy("time", "desc")
+        .limit(100)
+        .get();
+
+      searches = searchesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
+
+    return res.json({
+      success: true,
+      profile: {
+        uid,
+        username: userData.username || getEmailPrefix(userData.email || ""),
+        email: userData.email || "",
+        slug,
+        isActive: userData.enabled !== false && settings.linkEnabled !== false,
+        notificationsEnabled: settings.notificationsEnabled === true,
+      },
+      searches,
+    });
+  } catch (error) {
+    console.error("PERFORMER DASHBOARD DATA ERROR:", error);
+    next(error);
+  }
+});
+
 // ---------- VERIFY PAYMENT & CREATE USER ----------
 app.post("/verify-payment", async (req, res, next) => {
   try {

@@ -9,15 +9,6 @@ import {
   requestPushToken,
 } from "../services/pushService";
 import { ensurePushRegistration } from "../services/ensurePushRegistration";
-import {
-  getDoc,
-  getDocs,
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-} from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { API_BASE } from "../config/api";
 import "./Dashboard.css";
@@ -37,64 +28,49 @@ export default function Dashboard() {
   const [pushToken, setPushToken] = useState(getStoredPushToken());
 
   useEffect(() => {
-    let unsubscribe = () => {};
+    let intervalId = null;
+    let active = true;
 
     const load = async () => {
-      const userRef = doc(db, "users", auth.currentUser.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const profile = userSnap.data();
+      try {
+        const authToken = await auth.currentUser?.getIdToken();
+        if (!authToken) return;
+
+        const response = await fetch(`${API_BASE}/performer-dashboard-data`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to load dashboard data");
+        }
+
+        const payload = await response.json();
+        if (!active) return;
+
+        const profile = payload?.profile || {};
         const fallbackUsername =
           (auth.currentUser?.email || "").split("@")[0] || "Performer";
         setUsername(profile.username || fallbackUsername);
-        setIsActive(profile.enabled !== false);
-
-        const settingsSnap = await getDoc(doc(db, "userSettings", auth.currentUser.uid));
-        const settings = settingsSnap.exists() ? settingsSnap.data() : {};
-        setIsActive((profile.enabled !== false) && (settings.linkEnabled !== false));
-        setNotificationsEnabled(settings.notificationsEnabled === true);
-        let userSlug = profile.slug;
-
-        if (!userSlug) {
-          const slugSnap = await getDocs(
-            query(
-              collection(db, "slugs"),
-              where("uid", "==", auth.currentUser.uid),
-            ),
-          );
-          if (!slugSnap.empty) {
-            userSlug = slugSnap.docs[0].id;
-          }
-        }
-
-        if (!userSlug) return;
-        setSlug(userSlug);
-
-        const q = query(
-          collection(db, "searches"),
-          where("slug", "==", userSlug),
-          orderBy("time", "desc"),
-        );
-
-        unsubscribe = onSnapshot(
-          q,
-          (snap) => {
-            const list = [];
-            snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
-            setSearches(list);
-          },
-          (error) => {
-            console.error(
-              "Dashboard search listener error (check indexes?):",
-              error,
-            );
-          },
-        );
+        setIsActive(profile.isActive !== false);
+        setNotificationsEnabled(profile.notificationsEnabled === true);
+        setSlug(profile.slug || null);
+        setSearches(Array.isArray(payload?.searches) ? payload.searches : []);
+      } catch (error) {
+        console.error("Dashboard data load failed:", error);
       }
     };
 
     load();
-    return () => unsubscribe();
+    intervalId = setInterval(load, 5000);
+
+    return () => {
+      active = false;
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   useEffect(() => {
