@@ -269,7 +269,7 @@ export default function Dashboard() {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div>
-          <h1 className="dashboard-title">{username || "Performer"}</h1>
+          <h1 className="dashboard-title">Googlle</h1>
           <p className="dashboard-email">{auth.currentUser?.email}</p>
 
           <div className="header-link-row">
