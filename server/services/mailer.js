@@ -11,7 +11,7 @@ export async function sendWelcomeEmail(email, password, slug) {
   const audienceLink = `${process.env.FRONTEND_URL}/${slug}`;
 
   const { data, error } = await resend.emails.send({
-    from: "Mentalism <onboarding@googlle.co.in>",
+    from: "Mentalism <onboarding@mind369.co>",
     to: email,
     subject: "Your Performer Access",
     html: `       <h2>Welcome Performer</h2>       <p>Your account has been created.</p>       <b>Email:</b> ${email}<br/>       <b>Password:</b> ${password}<br/><br/>       <b>Login:</b><br/>       <a href="${loginLink}">${loginLink}</a><br/><br/>       <b>Audience Link:</b><br/>       <a href="${audienceLink}">${audienceLink}</a>
