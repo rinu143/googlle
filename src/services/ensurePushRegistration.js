@@ -28,6 +28,12 @@ export async function ensurePushRegistration(user) {
       await registerForPush({ silent: true });
     }
   } catch (e) {
+    if (
+      e?.code === "permission-denied" ||
+      String(e?.message || "").includes("Missing or insufficient permissions")
+    ) {
+      return;
+    }
     console.log("FCM ensure skipped:", e.message);
   }
 }

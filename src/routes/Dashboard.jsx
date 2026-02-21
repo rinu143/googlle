@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { deleteDoc, doc } from "firebase/firestore";
+import {
+  getDoc,
+  getDocs,
+  collection,
+  query,
+  where,
+  orderBy,
+} from "firebase/firestore";
 import { getDeviceId } from "../services/deviceService";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -31,6 +39,50 @@ export default function Dashboard() {
   useEffect(() => {
     let intervalId = null;
     let active = true;
+    let warnedLegacyFallback = false;
+
+    const loadViaFirestore = async () => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      const userRef = doc(db, "users", currentUser.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) return;
+
+      const profile = userSnap.data() || {};
+      const fallbackUsername = (currentUser.email || "").split("@")[0] || "Performer";
+      setUsername(profile.username || fallbackUsername);
+
+      const settingsSnap = await getDoc(doc(db, "userSettings", currentUser.uid));
+      const settings = settingsSnap.exists() ? settingsSnap.data() : {};
+      setIsActive((profile.enabled !== false) && (settings.linkEnabled !== false));
+      setNotificationsEnabled(settings.notificationsEnabled === true);
+
+      let userSlug = profile.slug || "";
+      if (!userSlug) {
+        const slugSnap = await getDocs(
+          query(collection(db, "slugs"), where("uid", "==", currentUser.uid)),
+        );
+        if (!slugSnap.empty) userSlug = slugSnap.docs[0].id;
+      }
+
+      setSlug(userSlug || null);
+      if (!userSlug) {
+        setSearches([]);
+        return;
+      }
+
+      const searchesSnap = await getDocs(
+        query(
+          collection(db, "searches"),
+          where("slug", "==", userSlug),
+          orderBy("time", "desc"),
+        ),
+      );
+      const list = [];
+      searchesSnap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+      setSearches(list);
+    };
 
     const load = async () => {
       try {
@@ -43,6 +95,15 @@ export default function Dashboard() {
             Authorization: `Bearer ${authToken}`,
           },
         });
+
+        if (response.status === 404) {
+          if (!warnedLegacyFallback) {
+            warnedLegacyFallback = true;
+            console.warn("Using Firestore fallback: /performer-dashboard-data not found.");
+          }
+          await loadViaFirestore();
+          return;
+        }
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -62,6 +123,11 @@ export default function Dashboard() {
         setSearches(Array.isArray(payload?.searches) ? payload.searches : []);
       } catch (error) {
         console.error("Dashboard data load failed:", error);
+        try {
+          await loadViaFirestore();
+        } catch (fallbackError) {
+          console.error("Dashboard Firestore fallback failed:", fallbackError);
+        }
       }
     };
 
