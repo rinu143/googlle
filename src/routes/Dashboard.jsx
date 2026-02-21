@@ -10,8 +10,9 @@ import {
 } from "../services/pushService";
 import { ensurePushRegistration } from "../services/ensurePushRegistration";
 import { db, auth } from "../firebase";
-import { API_BASE } from "../config/api";
 import "./Dashboard.css";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function Dashboard() {
   const { user } = useAuth();

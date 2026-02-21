@@ -1,4 +1,4 @@
-import { API_BASE } from "../config/api";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export async function saveSearchIfActive(slug, word) {
   if (!slug || !word) return false;

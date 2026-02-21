@@ -10,9 +10,10 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { getDeviceId } from "../services/deviceService";
-import { API_BASE } from "../config/api";
 import { useNavigate } from "react-router-dom";
 import "./Admin.css";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function Admin() {
   const [username, setUsername] = useState("");

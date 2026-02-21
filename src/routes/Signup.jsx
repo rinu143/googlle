@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Signup.css";
-import { API_BASE } from "../config/api";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function Signup() {
   const [username, setUsername] = useState("");

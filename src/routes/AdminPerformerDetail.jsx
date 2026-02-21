@@ -3,8 +3,9 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { collection, deleteDoc, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { useNavigate, useParams } from "react-router-dom";
 import { auth, db } from "../firebase";
-import { API_BASE } from "../config/api";
 import "./Admin.css";
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 export default function AdminPerformerDetail() {
   const { uid } = useParams();
