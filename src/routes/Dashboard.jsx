@@ -36,6 +36,12 @@ export default function Dashboard() {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushToken, setPushToken] = useState(getStoredPushToken());
 
+  const canReceivePushOnThisDevice = () => {
+    if (typeof Notification === "undefined") return false;
+    if (Notification.permission !== "granted") return false;
+    return Boolean(getStoredPushToken());
+  };
+
   useEffect(() => {
     let intervalId = null;
     let active = true;
@@ -56,7 +62,9 @@ export default function Dashboard() {
       const settingsSnap = await getDoc(doc(db, "userSettings", currentUser.uid));
       const settings = settingsSnap.exists() ? settingsSnap.data() : {};
       setIsActive((profile.enabled !== false) && (settings.linkEnabled !== false));
-      setNotificationsEnabled(settings.notificationsEnabled === true);
+      setNotificationsEnabled(
+        settings.notificationsEnabled === true && canReceivePushOnThisDevice(),
+      );
 
       let userSlug = profile.slug || "";
       if (!userSlug) {
@@ -118,7 +126,9 @@ export default function Dashboard() {
           (auth.currentUser?.email || "").split("@")[0] || "Performer";
         setUsername(profile.username || fallbackUsername);
         setIsActive(profile.isActive !== false);
-        setNotificationsEnabled(profile.notificationsEnabled === true);
+        setNotificationsEnabled(
+          profile.notificationsEnabled === true && canReceivePushOnThisDevice(),
+        );
         setSlug(profile.slug || null);
         setSearches(Array.isArray(payload?.searches) ? payload.searches : []);
       } catch (error) {

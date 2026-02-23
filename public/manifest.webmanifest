@@ -1,0 +1,25 @@
+{
+  "name": "Googlle",
+  "short_name": "Googlle",
+  "description": "Mentalism performer dashboard",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "gcm_sender_id": "103953800507",
+  "icons": [
+    {
+      "src": "/assets/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

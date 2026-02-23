@@ -1,5 +1,5 @@
 /* global importScripts, firebase */
-self.__SW_VERSION = "v2";
+self.__SW_VERSION = "v3";
 importScripts("https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js");
 importScripts(
   "https://www.gstatic.com/firebasejs/12.9.0/firebase-messaging-compat.js",
@@ -18,9 +18,33 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const title = payload?.notification?.title || "New search";
+  const icon = "/assets/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png";
   self.registration.showNotification(title, {
     body: "",
     tag: "latest-search",
     renotify: true,
+    icon,
+    badge: icon,
+    data: {
+      url: "/dashboard",
+    },
   });
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification?.data?.url || "/dashboard";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      const existing = list.find((client) => "focus" in client);
+      if (existing) {
+        existing.postMessage({ type: "OPEN_DASHBOARD", url: targetUrl });
+        return existing.focus();
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+      return null;
+    }),
+  );
 });
