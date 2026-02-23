@@ -33,7 +33,12 @@ export async function registerForPush(options = {}) {
     throw new Error("Notifications are not supported on this browser.");
   }
 
-  const permission = await Notification.requestPermission();
+  const permission =
+    Notification.permission === "granted"
+      ? "granted"
+      : silent
+        ? Notification.permission
+        : await Notification.requestPermission();
   if (permission !== "granted") {
     if (silent) {
       localStorage.setItem(PUSH_SILENT_DENIED_KEY, "1");

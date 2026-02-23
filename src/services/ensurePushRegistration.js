@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { getSilentDeniedFlag, registerForPush } from "./pushService";
 
@@ -19,14 +19,8 @@ export async function ensurePushRegistration(user) {
       return;
     }
 
-    const ref = collection(db, "devices", user.uid, "tokens");
-    const snap = await getDocs(ref);
-
-    // Old user: no tokens stored yet
-    if (snap.empty) {
-      console.log("FCM: registering legacy user device");
-      await registerForPush({ silent: true });
-    }
+    // Self-heal token state on login/refresh when notifications are enabled.
+    await registerForPush({ silent: true });
   } catch (e) {
     if (
       e?.code === "permission-denied" ||

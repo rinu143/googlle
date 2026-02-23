@@ -157,21 +157,6 @@ export default function Dashboard() {
     }
     if (token) {
       try {
-        const authToken = await auth.currentUser?.getIdToken();
-        if (authToken) {
-          await fetch(`${API_BASE}/push-settings`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({ enabled: false, fcmToken: token }),
-          });
-        }
-      } catch (e) {
-        console.error("Error disabling push on logout", e);
-      }
-      try {
         await deleteDoc(doc(db, "devices", uid, "tokens", token));
       } catch (e) {
         console.error("Error removing push token doc", e);
