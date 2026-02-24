@@ -2,49 +2,59 @@ import { useState, useEffect } from "react";
 import { saveSearchIfActive } from "../services/searchService";
 import "./SearchBox.css";
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+const FALLBACK_TREND_POOL = [
+  "India vs Australia",
+  "Latest News",
+  "Google Trends",
+  "Mentalism",
+  "Weather today",
+  "Share Market",
+  "ChatGPT",
+  "Cricket score",
+  "Tech updates",
+  "Today headlines",
+];
+
+function randomFallbackTrends() {
+  return [...FALLBACK_TREND_POOL]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 8);
+}
+
 export default function SearchBox({ slug }) {
   const [q, setQ] = useState("");
-  const [trends, setTrends] = useState([]);
+  const [trends, setTrends] = useState(() => randomFallbackTrends());
 
   useEffect(() => {
+    let active = true;
+
     const fetchTrends = async () => {
       try {
-        // Fetch valid RSS from Google Trends via AllOrigins proxy
-        const response = await fetch(
-          "https://api.allorigins.win/get?url=" +
-            encodeURIComponent(
-              "https://trends.google.com/trends/trendingsearches/daily/rss?geo=IN",
-            ),
-        );
-        const data = await response.json();
-
-        // Parse XML
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(data.contents, "text/xml");
-        const items = xml.querySelectorAll("item title");
-
-        // Take top 8 trends
-        const trendsList = Array.from(items)
-          .slice(0, 8)
-          .map((item) => item.textContent);
-
-        setTrends(trendsList);
+        const trendsUrl = API_BASE
+          ? `${API_BASE}/trending-searches`
+          : "/trending-searches";
+        const response = await fetch(trendsUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch trends: ${response.status}`);
+        }
+        const payload = await response.json();
+        const trendsList = Array.isArray(payload?.trends)
+          ? payload.trends.filter(Boolean).slice(0, 8)
+          : [];
+        if (active && trendsList.length > 0) {
+          setTrends(trendsList);
+        }
       } catch (error) {
         console.error("Failed to fetch trends", error);
-        // Fallback mock data
-        setTrends([
-          "India vs Australia",
-          "Latest News",
-          "Google Trends",
-          "Mentalism",
-          "Weather today",
-          "Share Market",
-          "ChatGPT",
-        ]);
       }
     };
 
     fetchTrends();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const submit = async (e) => {

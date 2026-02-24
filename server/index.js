@@ -38,6 +38,24 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+const TRENDING_RSS_URL =
+  "https://trends.google.com/trending/rss?geo=IN";
+const TRENDING_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_TRENDS = [
+  "India vs Australia",
+  "Latest News",
+  "Google Trends",
+  "Mentalism",
+  "Weather today",
+  "Share Market",
+  "ChatGPT",
+  "Cricket score",
+];
+let trendingCache = {
+  items: DEFAULT_TRENDS,
+  fetchedAt: 0,
+};
+
 // ---------- UTILITIES ----------
 
 function generatePassword(email, phone) {
@@ -50,6 +68,70 @@ function generatePassword(email, phone) {
 
 function getEmailPrefix(email) {
   return (email || "").split("@")[0] || "user";
+}
+
+function decodeXmlEntities(value = "") {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function parseTrendTitlesFromRss(xmlText) {
+  const items = xmlText.match(/<item\b[\s\S]*?<\/item>/gi) || [];
+  const titles = items
+    .map((item) => {
+      const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/i);
+      if (!titleMatch?.[1]) return "";
+      return decodeXmlEntities(titleMatch[1])
+        .replace(/<!\[CDATA\[|\]\]>/g, "")
+        .trim();
+    })
+    .filter(Boolean);
+  return titles.slice(0, 8);
+}
+
+async function fetchTrendingFromSource() {
+  const response = await fetch(TRENDING_RSS_URL, {
+    headers: {
+      "User-Agent": "mentalism-trends-fetcher",
+      Accept: "application/rss+xml, application/xml, text/xml;q=0.9",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Trending source request failed: ${response.status}`);
+  }
+
+  const xmlText = await response.text();
+  const titles = parseTrendTitlesFromRss(xmlText);
+  if (titles.length === 0) {
+    throw new Error("Trending source returned no titles");
+  }
+
+  return titles;
+}
+
+async function getTrendingSearches() {
+  const now = Date.now();
+  const cacheValid = now - trendingCache.fetchedAt < TRENDING_CACHE_TTL_MS;
+  if (cacheValid && Array.isArray(trendingCache.items) && trendingCache.items.length > 0) {
+    return trendingCache.items;
+  }
+
+  try {
+    const titles = await fetchTrendingFromSource();
+    trendingCache = {
+      items: titles,
+      fetchedAt: now,
+    };
+    return titles;
+  } catch (error) {
+    console.error("TRENDING FETCH ERROR:", error.message);
+    return trendingCache.items?.length ? trendingCache.items : DEFAULT_TRENDS;
+  }
 }
 
 async function reserveUniqueSlug(uid, email) {
@@ -297,6 +379,20 @@ app.get("/slug-status/:slug", async (req, res, next) => {
     res.json({ exists: true, uid, enabled, isActive });
   } catch (error) {
     console.error("SLUG STATUS ERROR:", error);
+    next(error);
+  }
+});
+
+// ---------- PUBLIC TRENDING SEARCHES ----------
+app.get("/trending-searches", async (req, res, next) => {
+  try {
+    const trends = await getTrendingSearches();
+    res.json({
+      success: true,
+      trends,
+    });
+  } catch (error) {
+    console.error("TRENDING SEARCHES ERROR:", error);
     next(error);
   }
 });
